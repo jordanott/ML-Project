@@ -1,27 +1,30 @@
 import sys
 sys.path.append('../')
 
-import random
 import numpy as np
+import matplotlib.pyplot as plt
 
-from collections import namedtuple
+from src.agents.random_agent import RandomAgent
 from src.environment import env_manager, env_helper
 
 EYE_DIM = 64
-Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
 # define env
-#env = env_manager.Environment(data_dir='../data/')
-form, words = env_helper.gen_new_env('../data/')
+env = env_manager.Environment(data_dir='../data/')
+#form, words = env_helper.gen_new_env('../data/')
+agent = RandomAgent(10)
 
-# define eye
-x,y = random.randint(0,form.shape[1]),random.randint(0,form.shape[0])
-eye = Rectangle(x,y, x+EYE_DIM, y+EYE_DIM)
 
-# randomly chose word to highlight
-rw = random.choice(list(words.keys()))
+#s = env.reset()
+s = None
+while True:
+    a = agent.act(s)
 
-print('Highlighted word:',words[rw])
-print('Overlap with eye location:', env_helper.IOU(rw, eye))
+    # user input actions
+    a = int(input('>'))
 
-env_helper.show_word_and_eye_loc(form,rw,eye)
+    s_prime = env.step(a)
+
+    s = s_prime
+    #plt.imshow(s_prime)
+    #plt.show()
