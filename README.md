@@ -1,12 +1,11 @@
 # ML Project
 
+![](figures/eye_control.gif)
 
 ### Step 1. Download data
 
 The first step is to obtain the IAM dataset from the FKI's webpage. You'll need
-to [register](http://www.fki.inf.unibe.ch/DBs/iamDB/iLogin/index.php) in their website, in order to download it.
-
-Download [forms](http://www.fki.inf.unibe.ch/DBs/iamDB/data/forms/)
+to [register](http://www.fki.inf.unibe.ch/DBs/iamDB/iLogin/index.php) in their website, in order to download it. Then you can download the forms from [here](http://www.fki.inf.unibe.ch/DBs/iamDB/data/).
 
 ```
 mkdir data
@@ -28,6 +27,8 @@ tar -xf formsI-Z.tgz -C forms/
 tar -xf xml.tgz -C xml/
 ```
 
-[Reference](https://github.com/jpuigcerver/Laia/tree/master/egs/iam)
+### Step 2. [Data Exploration](https://github.com/jordanott/ML-Project/tree/master/DataExploration)
 
-![](figures/a01-000u.png)
+### Step 3. [Pick an Agent](https://github.com/jordanott/ML-Project/tree/master/src/agents)
+
+### Step 4. [Train]()
