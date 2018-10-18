@@ -17,6 +17,7 @@ class Environment(object):
         self.M = M
         self.D = state_size
         self.data_dir = data_dir
+        self.patience = 10
         # reward for agent having eye over words
         self.word_hover_bonus = .1
 
@@ -39,17 +40,19 @@ class Environment(object):
         # coordinates of current word
         self.coords = None
         # pick a random starting point the eye to look
-        x,y = random.randint(0,self.env.shape[1]),random.randint(0,self.env.shape[0])
+        self.start_x,self.start_y = env_helper.nearest_word_to_point(self.words, [0,0])
+        #random.randint(0,self.env.shape[1]-self.D),random.randint(0,self.env.shape[0]-self.D)
         # x,y corresponds to the upper left coordinate of the eye box
         EyeLocation = recordclass('EyeLocation', 'x y')
-        self.eye = EyeLocation(x,y)
+        self.eye = EyeLocation(self.start_x,self.start_y )
 
-        self.count = 0
+        self.episode_count = 0
 
         return self.format_state()
 
     def format_state(self):
         row, col = self.eye.y, self.eye.x
+
         state = self.env[row:row+self.D, col:col+self.D]
         state = state[:,:,0] / 255.
         state = state[np.newaxis,np.newaxis]
@@ -68,36 +71,37 @@ class Environment(object):
             done (bool): the episode has ended
         """
         r = 0; done = False
+
         if a == 0: # move up
-            self.eye.y -= self.M
+            if self.eye.y - self.M > -1: self.eye.y -= self.M
         elif a == 1: # move right
-            self.eye.x += self.M
+            if self.eye.x + self.M + self.D < self.env.shape[1]: self.eye.x += self.M
         elif a == 2: # move down
-            self.eye.y += self.M
+            if self.eye.y + self.M + self.D < self.env.shape[0]: self.eye.y += self.M
         elif a == 3: # move left
-            self.eye.x -= self.M
+            if self.eye.x - self.M > -1: self.eye.x -= self.M
+        elif a == 4: # new line
+            if self.eye.y + self.D < self.env.shape[0]:
+                self.eye.y += self.D
+                self.eye.x = self.start_x
 
         self.eye_history.append(deepcopy(self.eye))
 
         eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
         self.coords, overlap = env_helper.eye_word_overlap(self.words, eye_rect)
-        
+
         if self.coords is not None:
-            if self.words[self.coords]['id'] == word:
-                r += 1
-                del self.words[self.coords]
-            elif overlap:
-                r += self.word_hover_bonus * self.words[self.coords]['hover']
-                self.words[self.coords]['hover'] = max(self.words[self.coords]['hover']+1, self.words[self.coords]['max'])
+            if self.words[self.coords]['id'] == word: # if the agent correctly predicts the word
+                r += 1; del self.words[self.coords] # remove word if predicted correctly
 
-        self.count += 1
-        return self.format_state(), r, done
+            elif overlap: # reward agent for looking at words... as long as it doesn't stare too long!
+                env_helper.assign_hover_bonus(self.words[self.coords])
+                r += self.word_hover_bonus * self.words[self.coords]['hover_bonus']
 
-    def is_terminal(self):
-        # check if the state is a terminal state
-        pass
+        self.episode_count += 1
+        return self.format_state(), r, random.choice([0,1])
 
-    def visualize_eyetrace(self):
+    def visualize_eyetrace(self,show=False):
         e = 1/(2. * len(self.eye_history))
         alpha = e
 
@@ -115,5 +119,6 @@ class Environment(object):
             ax.add_patch(word_rec)
 
         plt.axis('off')
-        plt.savefig('images/%03d' % self.count, bbox_inches='tight')
-        plt.show()
+        plt.savefig('images/%03d' % self.episode_count, bbox_inches='tight')
+
+        if show: plt.show()
