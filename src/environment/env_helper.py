@@ -1,10 +1,13 @@
 import os
+import sys
 import random
+sys.path.append('../../')
 import matplotlib.pyplot as plt
 
+from scipy.ndimage import imread
 from collections import namedtuple
 from xml.etree.ElementTree import parse
-from scipy.ndimage import imread
+from DataExploration.word_analysis import load_word_ids
 
 Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
@@ -59,6 +62,7 @@ def gen_new_env(data_dir,ds=2.0):
     ds (float): down sample amount
     """
     form, xml = load_form_and_xml(data_dir)
+    word_ids = load_word_ids()
 
     words = {} # {coordinates : word}
     for line in xml[1]:
@@ -70,6 +74,11 @@ def gen_new_env(data_dir,ds=2.0):
 
                 r = Rectangle(x1/ds,y1/ds,x2/ds+w/ds,y2/ds+h/ds)
                 if r not in words:
-                    words[r] = word.attrib['text']
+                    words[r] = {
+                        'text':word.attrib['text'],
+                        'id':word_ids[word.attrib['text']],
+                        'max':len(word.attrib['text']),
+                        'hover':0
+                        }
 
     return form[::int(ds),::int(ds)], words
