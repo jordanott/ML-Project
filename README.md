@@ -1,4 +1,4 @@
-# ML Project
+# ReaderNet
 
 ![](figures/eye_control.gif)
 
