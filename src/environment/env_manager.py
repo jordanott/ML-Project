@@ -17,6 +17,8 @@ class Environment(object):
         self.M = M
         self.D = state_size
         self.data_dir = data_dir
+        # reward for agent having eye over words
+        self.word_hover_bonus = .1
 
     def save_env(self):
         # save env/record actions
@@ -34,6 +36,8 @@ class Environment(object):
         # keeps track of where the agent has looked
         self.eye_history = []
 
+        # coordinates of current word
+        self.coords = None
         # pick a random starting point the eye to look
         x,y = random.randint(0,self.env.shape[1]),random.randint(0,self.env.shape[0])
         # x,y corresponds to the upper left coordinate of the eye box
@@ -52,14 +56,15 @@ class Environment(object):
 
         return Tensor(state)
 
-    def step(self,a):
+    def step(self, a, word):
         """
         PARAM
             a (int): agent action choice 0:up, 1:right, 2:down, 3:left
+            word (int): ID of word predicted by the agent
 
         RETURNS
             s' (image): next state
-            r (int): reward
+            r (int): reward = word_bonus + word_hover_bonus
             done (bool): the episode has ended
         """
         r = 0; done = False
@@ -75,8 +80,16 @@ class Environment(object):
         self.eye_history.append(deepcopy(self.eye))
 
         eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
-        coords, overlap = env_helper.eye_word_overlap(self.words, eye_rect) # modify eye
-        self.visualize_eyetrace(coords)
+        self.coords, overlap = env_helper.eye_word_overlap(self.words, eye_rect)
+        
+        if self.coords is not None:
+            if self.words[self.coords]['id'] == word:
+                r += 1
+                del self.words[self.coords]
+            elif overlap:
+                r += self.word_hover_bonus * self.words[self.coords]['hover']
+                self.words[self.coords]['hover'] = max(self.words[self.coords]['hover']+1, self.words[self.coords]['max'])
+
         self.count += 1
         return self.format_state(), r, done
 
@@ -84,7 +97,7 @@ class Environment(object):
         # check if the state is a terminal state
         pass
 
-    def visualize_eyetrace(self, coords=None):
+    def visualize_eyetrace(self):
         e = 1/(2. * len(self.eye_history))
         alpha = e
 
@@ -96,8 +109,8 @@ class Environment(object):
             ax.add_artist(circle)
             alpha += e
 
-        if coords:
-            word_rec = patches.Rectangle((coords.xmin,coords.ymin),coords.xmax - coords.xmin,coords.ymax - coords.ymin,
+        if self.coords:
+            word_rec = patches.Rectangle((self.coords.xmin,self.coords.ymin),self.coords.xmax - self.coords.xmin,self.coords.ymax - self.coords.ymin,
                 linewidth=1,edgecolor='black',facecolor='none')
             ax.add_patch(word_rec)
 
