@@ -2,15 +2,35 @@ import torch
 import random
 import numpy as np
 import torch.nn as nn
+import torch.optim as opt
 import matplotlib.pyplot as plt
+import torch.nn.functional as F
 
 from copy import deepcopy
 from src.networks.ff import FF
+from src.networks.lstm import LSTM
 from src.networks.embedding import CNN
 from random import randint,uniform,sample
 
+class Model(nn.Module):
+    def __init__(self, num_actions, num_words):
+        super(Model, self).__init__()
+
+        self.embed = CNN()
+        self.lstm = LSTM(64*29*29, hidden_size=256)
+        self.word = FF(input_size=256,num_outputs=num_words)
+        self.actions = FF(input_size=256,num_outputs=num_actions)
+
+    def forward(self, x):
+        e = self.embed(x).unsqueeze(0)
+        lstm_out = self.lstm(e)
+        word_prediction = self.word(lstm_out)
+        actions = self.actions(lstm_out)
+
+        return actions, word_prediction
+
 class DQN(object):
-    def __init__(self,num_actions,VISUALIZE=False):
+    def __init__(self,num_actions,num_words=100,VISUALIZE=False):
         # replay memory
         self.memory = []
         # discount rate
@@ -28,12 +48,14 @@ class DQN(object):
         # decay
         self.epsilon_decay = 0.99999
         # number of environment actions
-        self.action_size = num_actions
+        self.num_actions = num_actions
         # load reader network
-        self.model = nn.Sequential(
-            CNN(),
-            FF(64*29*29, num_actions)
-        )
+        self.model = Model(num_actions, num_words)
+
+        self.opt = opt.RMSprop(self.model.parameters())
+
+    def reset(self):
+        self.model.lstm.reset_hidden()
 
     def copy(self,model):
         self.model = deepcopy(model)
@@ -45,14 +67,15 @@ class DQN(object):
         self.memory.append([state,action,reward,s_prime,done])
 
     def act(self,state):
+        q_values,w = self.model(state)
+        w = torch.argmax(w,dim=1)
         # sample random action with probability epsilon
         if uniform(0, 1) < self.epsilon:
-            return randint(0,self.action_size-1)
+            return randint(0,self.num_actions-1),w
 
-        q_values = self.model(state)
         a = torch.argmax(q_values,dim=1).data.numpy()[0]
 
-        return a
+        return a,w
 
     def get_batch(self):
         # if replay memory is big enough take random sample
@@ -61,26 +84,29 @@ class DQN(object):
 
         return self.memory
 
-    '''def replay(self):
+    def replay(self, behaviour):
         batch = self.get_batch()
         x,y = [],[]
         for i in range(len(batch)):
             # get experience from batch
-            state,action,reward,s_prime,done = batch[i]
-            target = reward
+            s,a,r,s_prime,done = batch[i]
+            # Q(s, a; theta_target)
+            q_s,w = self.model(s)
+            q_s_a = q_s[0,a]
+
+            target = r
             # if the round hasn't ended; estimate value of taking best action in s_prime
             if not done:
-                p_reward = np.amax(self.model.predict(s_prime)[0])
+                # max(Q(s', a'; theta_behaviour))
+                q_s_a_prime = torch.max(behaviour(s_prime)) # TODO: Fix this erro
                 # add to reward with discount factor gamma
-                target = reward + self.gamma * p_reward
-            # predict greedy reward of current state
-            target_f = self.model.predict(state)
-            # set the observed reward of action previously taken
-            target_f[0][action] = target
-            # add to training set for network
-            x.append(state.reshape(state.shape[1],state.shape[2],state.shape[3],1))
-            y.append(target_f[0])
-        self.model.fit(np.array(x), np.array(y), epochs=2, verbose=0)
-        self.memory = []
+                target = r + self.gamma * q_s_a_prime
+
+            error = target - q_s_a
+            clipped_error = -1.0 * error.clamp(-1,1)
+
+            q_s_a.backward(clipped_error)
+            self.opt.step()
+
         if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay'''
+            self.epsilon *= self.epsilon_decay
