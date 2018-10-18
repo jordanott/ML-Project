@@ -24,8 +24,11 @@ class Model(nn.Module):
     def forward(self, x):
         e = self.embed(x).unsqueeze(0)
         lstm_out = self.lstm(e)
-        word_prediction = self.word(lstm_out)
+
         actions = self.actions(lstm_out)
+
+        word_prediction = self.word(lstm_out)
+        word_prediction = F.log_softmax(word_prediction,dim=1)
 
         return actions, word_prediction
 
@@ -38,7 +41,7 @@ class DQN(object):
         # exploration rate
         self.epsilon = 1
         # batch size
-        self.batch_size = 256
+        self.batch_size = 32
         # memory size
         self.memory_size = 2000
         # visualize
@@ -51,7 +54,7 @@ class DQN(object):
         self.num_actions = num_actions
         # load reader network
         self.model = Model(num_actions, num_words)
-
+        # model optimizer
         self.opt = opt.RMSprop(self.model.parameters())
 
     def reset(self):
@@ -60,11 +63,11 @@ class DQN(object):
     def copy(self,model):
         self.model = deepcopy(model)
 
-    def remember(self,state,action,reward,s_prime,done):
+    def remember(self,episode):
         if len(self.memory) == self.memory_size:
             del self.memory[0]
         # store experience
-        self.memory.append([state,action,reward,s_prime,done])
+        self.memory.append([episode])
 
     def act(self,state):
         q_values,w = self.model(state)
@@ -86,27 +89,29 @@ class DQN(object):
 
     def replay(self, behaviour):
         batch = self.get_batch()
-        x,y = [],[]
-        for i in range(len(batch)):
-            # get experience from batch
-            s,a,r,s_prime,done = batch[i]
-            # Q(s, a; theta_target)
-            q_s,w = self.model(s)
-            q_s_a = q_s[0,a]
+        
+        for episodes in batch:
+            for episode in episodes:
+                # get experience from batch
+                s,a,r,s_prime,done = episode
+                # Q(s, a; theta_target)
+                q_s,w = self.model(s)
+                q_s_a = q_s[0,a]
 
-            target = r
-            # if the round hasn't ended; estimate value of taking best action in s_prime
-            if not done:
-                # max(Q(s', a'; theta_behaviour))
-                q_s_a_prime = torch.max(behaviour(s_prime)) # TODO: Fix this erro
-                # add to reward with discount factor gamma
-                target = r + self.gamma * q_s_a_prime
+                target = r
+                # if the round hasn't ended; estimate value of taking best action in s_prime
+                if not done:
+                    # max(Q(s', a'; theta_behaviour))
+                    q_s_prime, w_prime = behaviour(s_prime)
+                    q_s_a_prime = torch.max(q_s_prime)
+                    # add to reward with discount factor gamma
+                    target = r + self.gamma * q_s_a_prime
 
-            error = target - q_s_a
-            clipped_error = -1.0 * error.clamp(-1,1)
+                error = target - q_s_a
+                clipped_error = -1.0 * error.clamp(-1,1)
 
-            q_s_a.backward(clipped_error)
-            self.opt.step()
+                q_s_a.backward(clipped_error)
+                self.opt.step()
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
