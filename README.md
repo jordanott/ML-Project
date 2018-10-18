@@ -31,4 +31,18 @@ tar -xf xml.tgz -C xml/
 
 ### Step 3. [Pick an Agent](https://github.com/jordanott/ML-Project/tree/master/src/agents)
 
+### Step 4. Paradigms
+
+1. **One network:** the reader network, *π<sub>r</sub>*, takes in a small chunk of the environment (the state, *S*, POMDP) and produces an action, *a*, and a word prediction, *w*. The environment then returns a new state depended on *a*.  
+  a. *π<sub>r</sub>( a | S )*  
+    * Actions: Up, down, left, right, newline (discrete)
+1. **One network:** the reader network, *π<sub>m</sub>*, takes in a small chunk of the environment (the state, *S*, POMDP) and produces an action, *a* for and a word prediction, *w*.  
+  a. *π<sub>r</sub>( a | S )*  
+    * Actions: Up, down, left, right, newline, full page view (discrete)
+3. **Two networks:** the master network, *π<sub>m</sub>*, takes in the whole page (the environment, *E*, fully observable MDP) and predicts an *x,y* location of where to look with high resolution. This glimpse is a small chunk of the environment (the state, *S*, POMDP). *S* is feed to the worker network π<sub>w</sub>, which produces an action recommendation, *a* for the master network and a word prediction, *w*.     
+  a. *π<sub>m</sub>( x, y | E, A<sub>w</sub>=a )*  
+    * Actions: x, y (continuous)
+  b. *π<sub>w</sub>( a, w | S )*  
+    * Actions: Up, down, left, right, newline (discrete)
+
 ### Step 4. [Train]()
