@@ -4,13 +4,12 @@ import torch.nn.functional as F
 
 
 class LSTM(nn.Module):
-    def __init__(self, hidden_size,output_size,num_layers=2):
+    def __init__(self, input_size, hidden_size, num_layers=2):
         super(LSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        self.rnn = nn.LSTM(hidden_size, hidden_size, num_layers, dropout=0.2)
-        self.l1 = nn.Linear(hidden_size, output_size)
+        self.rnn = nn.LSTM(input_size, hidden_size, num_layers, dropout=0.2)
 
         self.reset_hidden()
 
@@ -20,6 +19,5 @@ class LSTM(nn.Module):
     def forward(self, inputs):
         x, self.hidden = self.rnn(inputs, self.hidden)
         x = x[-1] # take last elem in seq
-        x = self.l1(x)
 
         return x
