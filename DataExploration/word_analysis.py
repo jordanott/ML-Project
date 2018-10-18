@@ -25,7 +25,7 @@ def iter_docs(data_dir='../data/xml/'):
 
 def load_word_ids():
     word_ids = {}
-    with open('word_frequency.txt','r') as word_freq:
+    with open('../DataExploration/word_frequency.txt','r') as word_freq:
         i = 0
         for line in word_freq:
             word,_ = line.split('|')
