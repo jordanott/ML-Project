@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+import numpy as np
 sys.path.append('../../')
 import matplotlib.pyplot as plt
 
@@ -38,7 +39,7 @@ def load_form_and_xml(data_dir):
 
 def eye_word_overlap(words, eye):
     """
-    Find what word
+    Find what word has most overlap with eye location
     words (dict): {coordinates: word}
     eye (recordclass): (xmin, ymin, xmax, ymax)
 
@@ -54,6 +55,41 @@ def eye_word_overlap(words, eye):
             max_coords = coords
 
     return max_coords, max_iou
+
+def nearest_word_to_point(words, point):
+    """
+    Find what word is closest to a given point
+    words (dict): {coordinates: word}
+    eye (list): [x, y]
+
+    returns:
+        coordinates
+    """
+    point = np.array(point)
+    min_coords, min_dist = None, 1e9
+    for coords in words:
+        c = np.array([coords.xmin, coords.ymin])
+        dist = np.linalg.norm(c - point)
+        min_dist = min(dist, min_dist)
+        if min_dist == dist:
+            min_coords = coords
+
+    return min_coords.xmin, min_coords.ymin
+
+def assign_hover_bonus(coords):
+    # is the num times hovering over word > max times allowed
+    greater_than_max_count = coords['hover_count'] > coords['max']
+    # is the hover bonus > the lower bound penalty
+    less_than_min_bonus = coords['hover_bonus'] > -coords['max']
+
+    if coords['hover_count'] <= coords['max']:
+        dir = 1
+    elif greater_than_max_count and less_than_min_bonus:
+        dir = -2
+    else: dir = 0
+
+    coords['hover_bonus'] += dir / float(coords['max'])
+    coords['hover_count'] += 1
 
 # loading new environment (pages)
 def gen_new_env(data_dir,ds=2.0):
@@ -78,7 +114,8 @@ def gen_new_env(data_dir,ds=2.0):
                         'text':word.attrib['text'],
                         'id':word_ids[word.attrib['text']],
                         'max':len(word.attrib['text']),
-                        'hover':0
+                        'hover_count':1,
+                        'hover_bonus':1
                         }
 
     return form[::int(ds),::int(ds)], words
