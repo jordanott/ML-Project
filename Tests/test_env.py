@@ -12,14 +12,30 @@ EYE_DIM = 64
 # define env
 env = env_manager.Environment(data_dir='../data/')
 # Human agent allows user to chose actions
-agent = DQN(4)
+behaviour = DQN(4)
+target = DQN(4)
 
-s = env.reset()
 
 while True:
-    # take action a
-    a = agent.act(s)
-    # environment returns new state, reward, done
-    s_prime, r, done = env.step(a)
 
-    s = s_prime
+    s = env.reset(); done = False
+    episode_count = 1
+
+    behaviour.reset()
+    while not done:
+        # take action a
+        a,w = behaviour.act(s)
+        # environment returns new state, reward, done
+        s_prime, r, done = env.step(a,w)
+
+        target.remember(s,a,r,s_prime,done)
+
+        target.replay(behaviour.model)
+
+        s = s_prime
+
+        if episode_count % 100 == 0:
+            env.visualize_eyetrace()
+
+            behaviour.copy(target.model)
+        episode_count += 1
