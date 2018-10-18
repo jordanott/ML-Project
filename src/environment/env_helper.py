@@ -43,7 +43,7 @@ def eye_word_overlap(words, eye):
         coordinates: if overlap
         None: if no overlap
     """
-    max_coords, max_iou = None, -1
+    max_coords, max_iou = None, 1e-9
     for coords in words:
         iou = overlap(coords, eye)
         max_iou = max(iou, max_iou)
