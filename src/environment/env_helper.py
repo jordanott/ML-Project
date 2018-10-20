@@ -16,7 +16,6 @@ Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 def get_state():
     pass
 
-
 # overlap between rectangles
 def overlap(a, b):  # returns 0 if rectangles don't intersect
     dx = min(a.xmax, b.xmax) - max(a.xmin, b.xmin)
@@ -26,7 +25,6 @@ def overlap(a, b):  # returns 0 if rectangles don't intersect
     if (dx>=0) and (dy>=0):
         return dx*dy / float(area_a + area_b + dx*dy)
     return 0
-
 
 def load_form_and_xml(data_dir):
     form_file = 'a01-000u.png'#random.choice(os.listdir(data_dir + 'forms/'))
@@ -59,10 +57,11 @@ def eye_word_overlap(words, eye):
 def nearest_word_to_point(words, point):
     """
     Find what word is closest to a given point
-    words (dict): {coordinates: word}
-    eye (list): [x, y]
+    PARAM:
+        words (dict): {coordinates: word}
+        eye (list): [x, y]
 
-    returns:
+    RETURN:
         coordinates
     """
     point = np.array(point)
