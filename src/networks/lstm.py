@@ -14,7 +14,7 @@ class LSTM(nn.Module):
         self.reset_hidden()
 
     def reset_hidden(self):
-        self.hidden = (torch.randn(self.num_layers, 1, self.hidden_size),torch.randn(self.num_layers, 1, self.hidden_size))
+        self.hidden = (torch.zeros(self.num_layers, 1, self.hidden_size),torch.zeros(self.num_layers, 1, self.hidden_size))
 
     def forward(self, inputs):
         x, self.hidden = self.rnn(inputs, self.hidden)
