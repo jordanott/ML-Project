@@ -1,6 +1,8 @@
 # ReaderNet
 
-![](figures/eye_control.gif)
+The degree of opacity represents the magnitude of the reward (darker = larger magnitude). The color represents the sign of the reward (green = positive; red = negative; black = 0).
+
+![](figures/summary.gif)
 
 ### Step 1. Download data
 
