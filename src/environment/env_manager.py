@@ -1,3 +1,4 @@
+import os
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,6 +7,7 @@ import matplotlib.patches as patches
 from torch import Tensor
 from copy import deepcopy
 from recordclass import recordclass
+from src.helper import plotting as P
 from src.environment import env_helper
 
 class Environment(object):
@@ -17,7 +19,7 @@ class Environment(object):
         self.M = M
         self.D = state_size
         self.data_dir = data_dir
-        self.patience = 10
+        self.num_episodes = 0
         # reward for agent having eye over words
         self.word_hover_bonus = .1
 
@@ -30,17 +32,21 @@ class Environment(object):
 
     def reset(self):
         """ Generates new env, clears eye history, and sets random eye location """
+        self.num_episodes += 1
         # generate new environment
         self.new_env() # sets self.env and self.words
         # deepcopy of env_words ~ this will be modified
         self.words = deepcopy(self.env_words)
         # keeps track of where the agent has looked
         self.eye_history = []
-
+        # set patience
+        self.patience = 25
         # coordinates of current word
         self.coords = None
         # pick a random starting point the eye to look
         self.start_x,self.start_y = env_helper.nearest_word_to_point(self.words, [0,0])
+        self.start_x,self.start_y = int(self.start_x)-25,int(self.start_y)-25
+
         #random.randint(0,self.env.shape[1]-self.D),random.randint(0,self.env.shape[0]-self.D)
         # x,y corresponds to the upper left coordinate of the eye box
         EyeLocation = recordclass('EyeLocation', 'x y')
@@ -70,7 +76,7 @@ class Environment(object):
             r (int): reward = word_bonus + word_hover_bonus
             done (bool): the episode has ended
         """
-        r = 0; done = False
+        r = -.3; done = False
 
         if a == 0: # move up
             if self.eye.y - self.M > -1: self.eye.y -= self.M
@@ -85,33 +91,52 @@ class Environment(object):
                 self.eye.y += self.D
                 self.eye.x = self.start_x
 
+        # record where the eye was looking
         self.eye_history.append(deepcopy(self.eye))
 
+        # build eye Rectangle
         eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
+
+        # calculate overlap between eye and words
         self.coords, overlap = env_helper.eye_word_overlap(self.words, eye_rect)
 
         if self.coords is not None:
+            correct_word = self.words[self.coords]['id']
             if self.words[self.coords]['id'] == word: # if the agent correctly predicts the word
-                r += 1; del self.words[self.coords] # remove word if predicted correctly
+                r = 1; del self.words[self.coords] # remove word if predicted correctly
 
             elif overlap: # reward agent for looking at words... as long as it doesn't stare too long!
                 env_helper.assign_hover_bonus(self.words[self.coords])
                 r += self.word_hover_bonus * self.words[self.coords]['hover_bonus']
+                self.patience -= 1
+        else:
+            correct_word = len(self.env_words) + 1
+            self.patience -= 1
 
         self.episode_count += 1
-        return self.format_state(), r, random.choice([0,1])
 
-    def visualize_eyetrace(self,show=False):
-        e = 1/(2. * len(self.eye_history))
-        alpha = e
+        if self.patience == 0:
+            done = True
+        # return ( s', r, done, correct_word )
+        return self.format_state(), r, done, correct_word
 
+    def visualize_eyetrace(self, r, show=False, reward_over_time=None):
+        dir_location = 'images/%05d/' % self.num_episodes
+        if not os.path.exists(dir_location):
+            os.mkdir(dir_location)
+
+        plt.clf()
         fig, ax = plt.subplots()
         ax.imshow(self.env)
 
-        for eye in self.eye_history:
-            circle = plt.Circle((eye.x+self.D/2, eye.y+self.D/2), self.D/2, color='g', alpha=alpha)
-            ax.add_artist(circle)
-            alpha += e
+        if r > 0: c = 'g'
+        elif r == 0: c = 'b'
+        else: c = 'r'
+
+        alpha = min(1, .1 if r == 0 else abs(r))
+
+        circle = plt.Circle((self.eye.x+self.D/2, self.eye.y+self.D/2), self.D/2, color=c, alpha=alpha)
+        ax.add_artist(circle)
 
         if self.coords:
             word_rec = patches.Rectangle((self.coords.xmin,self.coords.ymin),self.coords.xmax - self.coords.xmin,self.coords.ymax - self.coords.ymin,
@@ -119,6 +144,11 @@ class Environment(object):
             ax.add_patch(word_rec)
 
         plt.axis('off')
-        plt.savefig('images/%03d' % self.episode_count, bbox_inches='tight')
+        plt.savefig('images/%05d/%05d' % (self.num_episodes,self.episode_count), bbox_inches='tight')
 
         if show: plt.show()
+
+        if self.patience == 1:
+            os.system('convert -delay 20 -loop 0 {dir}0*.png {dir}summary.gif'.format(dir=dir_location))
+            if reward_over_time:
+                P.vs_time(reward_over_time,xlabel='Time',ylabel='Reward',title='Reward vs Time',location=dir_location)
