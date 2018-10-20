@@ -53,7 +53,7 @@ class DQN(object):
         # number of environment actions
         self.num_actions = num_actions
         # load reader network
-        self.model = Model(num_actions, num_words)
+        self.model = Model(num_actions, num_words + 2)
         # model optimizer
         self.opt = opt.RMSprop(self.model.parameters())
 
@@ -61,13 +61,15 @@ class DQN(object):
         self.model.lstm.reset_hidden()
 
     def copy(self,model):
+        # avoid leaf copy problem
+        model.lstm.reset_hidden()
         self.model = deepcopy(model)
 
     def remember(self,episode):
         if len(self.memory) == self.memory_size:
             del self.memory[0]
         # store experience
-        self.memory.append([episode])
+        self.memory.append(episode)
 
     def act(self,state):
         q_values,w = self.model(state)
@@ -89,11 +91,12 @@ class DQN(object):
 
     def replay(self, behaviour):
         batch = self.get_batch()
-        
-        for episodes in batch:
-            for episode in episodes:
+
+        for episode in batch:
+            self.reset(); behaviour.lstm.reset_hidden()
+            for time_step in episode:
                 # get experience from batch
-                s,a,r,s_prime,done = episode
+                s,a,r,s_prime,done,correct_word = time_step
                 # Q(s, a; theta_target)
                 q_s,w = self.model(s)
                 q_s_a = q_s[0,a]
@@ -110,7 +113,7 @@ class DQN(object):
                 error = target - q_s_a
                 clipped_error = -1.0 * error.clamp(-1,1)
 
-                q_s_a.backward(clipped_error)
+                q_s_a.backward(clipped_error, retain_graph=True)
                 self.opt.step()
 
         if self.epsilon > self.epsilon_min:
