@@ -2,7 +2,7 @@ import numpy as np
 from src.helper import plotting as P
 
 class MetricMonitor(object):
-    def __init__(self, num_words=13551):
+    def __init__(self, num_words=13551, teach=False):
         self.metrics = {
             'reward': [],
             'action_distribution': [],
@@ -10,19 +10,22 @@ class MetricMonitor(object):
         }
         self.num_episodes = 0
         self.num_words = num_words
-        self.reset_episode()
 
+        self.TEACH = teach
+        self.reset_episode()
+        
     def reset_episode(self):
         self.episode = {
             'episode_len': 0,
             'reward': [],
             'history': []
         }
+        if self.TEACH: self.episode['history'].append([])
 
     def set_word_targets(self):
         # start with the last word from episode
         replacement_word = self.episode['history'][-1][-1]
-        
+
         for idx in reversed(range(len(self.episode['history'])-1)):
             if replacement_word == self.num_words: continue
 
@@ -34,14 +37,20 @@ class MetricMonitor(object):
             replacement_word = current_word
 
     def get_history(self):
-        self.set_word_targets()
+        if not self.TEACH: self.set_word_targets()
 
         return self.episode['history']
 
     def store(self, s, a, r, s_prime, done, correct_word):
-        self.episode['history'].append([s,a,r,s_prime,done,correct_word])
-        self.episode['reward'].append(r)
-        self.episode['episode_len'] += 1
+        if self.TEACH:
+            self.episode['history'][-1].append([s,a,r,s_prime,done,correct_word])
+            if correct_word:
+                self.episode['history'].append([])
+
+        else:
+            self.episode['history'].append([s,a,r,s_prime,done,correct_word])
+            self.episode['reward'].append(r)
+            self.episode['episode_len'] += 1
 
     def log_status(self):
         mean_reward = np.mean(self.metrics['reward'][-100:])
