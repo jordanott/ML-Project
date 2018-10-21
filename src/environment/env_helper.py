@@ -99,15 +99,20 @@ def gen_new_env(data_dir,ds=2.0):
     form, xml = load_form_and_xml(data_dir)
     word_ids = load_word_ids()
 
+    lines = []
     words = {} # {coordinates : word}
     for line in xml[1]:
+        lines.append([])
         for word in line:
             if word.tag == 'word':
                 x1,y1 = int(word[0].attrib['x']),int(word[0].attrib['y'])
                 x2,y2 = int(word[-1].attrib['x']),int(word[-1].attrib['y'])
                 w,h = int(word[-1].attrib['width']),int(word[-1].attrib['height'])
 
-                r = Rectangle(x1/ds,y1/ds,x2/ds+w/ds,y2/ds+h/ds)
+                xmin = min(x1,x2); xmax = max(x1,x2)
+                ymin = min(y1,y2); ymax = max(y1,y2)
+                r = Rectangle(xmin/ds,ymin/ds,xmax/ds+w/ds,ymax/ds+h/ds)
+                
                 if r not in words:
                     words[r] = {
                         'text':word.attrib['text'],
@@ -117,4 +122,6 @@ def gen_new_env(data_dir,ds=2.0):
                         'hover_bonus':1
                         }
 
-    return form[::int(ds),::int(ds)], words
+                lines[-1].append(r)
+
+    return form[::int(ds),::int(ds)], words, lines
