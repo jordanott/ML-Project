@@ -8,12 +8,16 @@ class MetricMonitor(object):
             'action_distribution': [],
             'episode_len': []
         }
+        self.imitator_loss = {
+            'action_loss': [],
+            'word_loss': []
+        }
         self.num_episodes = 0
         self.num_words = num_words
 
         self.TEACH = teach
         self.reset_episode()
-        
+
     def reset_episode(self):
         self.episode = {
             'episode_len': 0,
@@ -49,14 +53,26 @@ class MetricMonitor(object):
 
         else:
             self.episode['history'].append([s,a,r,s_prime,done,correct_word])
-            self.episode['reward'].append(r)
-            self.episode['episode_len'] += 1
+        self.episode['reward'].append(r)
+        self.episode['episode_len'] += 1
 
-    def log_status(self):
-        mean_reward = np.mean(self.metrics['reward'][-100:])
-        print('Episodes: {}, Mean Reward (100): {}'.format(self.num_episodes, mean_reward))
+    def log_status(self, total_loss):
+        if self.TEACH:
+            self.imitator_loss['action_loss'].extend(total_loss['action_loss'])
+            self.imitator_loss['word_loss'].extend(total_loss['word_loss'])
 
-        self.visualize_reward()
+            data = [self.imitator_loss['action_loss'], self.imitator_loss['word_loss']]
+            labels = ['Action Loss', 'Word Loss']
+            P.vs_time(data, labels=labels,xlabel='Time',ylabel='Reward',title='Reward vs Time')
+
+            print('Action loss:', np.mean(total_loss['action_loss']), 'Word loss:',np.mean(total_loss['word_loss']))
+
+        else:
+            mean_reward = np.mean(self.metrics['reward'][-100:])
+            print('Episodes: {}, Mean Reward (100): {}'.format(self.num_episodes, mean_reward))
+
+            # plot reward vs time
+            P.vs_time(self.metrics['reward'],xlabel='Time',ylabel='Reward',title='Reward vs Time')
 
     def end_episode(self):
         self.metrics['reward'].extend(self.episode['reward'])
@@ -64,6 +80,3 @@ class MetricMonitor(object):
         self.metrics['episode_len'].append(self.episode['episode_len'])
 
         self.num_episodes += 1
-
-    def visualize_reward(self):
-        P.vs_time(self.metrics['reward'],xlabel='Time',ylabel='Reward',title='Reward vs Time')

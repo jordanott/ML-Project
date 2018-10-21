@@ -34,16 +34,13 @@ while True:
 
         s = s_prime
 
-        if (mm.num_episodes) % 100 == 0:
-            pass #env.visualize_eyetrace(r,reward_over_time=mm.episode['reward'])
+        if (mm.num_episodes+1) % 100 == 0:
+            env.visualize_eyetrace(r,reward_over_time=mm.episode['reward'])
 
     imitator.remember(mm.get_history())
     mm.end_episode()
 
     if mm.num_episodes % 10 == 0:
-        print('replaying...')
-        imitator.replay()
+        total_loss = imitator.replay()
 
-        #behaviour.copy(target.model)
-
-        mm.log_status()
+        mm.log_status(total_loss)

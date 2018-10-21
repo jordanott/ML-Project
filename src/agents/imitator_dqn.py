@@ -63,6 +63,10 @@ class DQN(object):
         self.model = Model(num_actions, num_words + 2)
         # model optimizer
         self.opt = opt.RMSprop(self.model.parameters())
+        # GPU
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # move model to GPU
+        self.model = self.model.to(self.device)
 
     def reset(self):
         self.model.lstm.reset_hidden()
@@ -73,11 +77,14 @@ class DQN(object):
         self.model = deepcopy(model)
 
     def remember(self,episode):
+        deleted = 0
         if len(self.memory) == self.memory_size:
             del self.memory[0]
-        if episode[-1][-1][-1] is None:
-            del episode[-1][-1]
-            print('Deleting word focus seq...')
+        for idx in range(len(episode)):
+            if episode[idx][-1][-1] is None:
+                del episode[idx]; deleted += 1
+
+        print('Word focuses deleted:', deleted)
         # store experience
         self.memory.append(episode)
 
@@ -89,22 +96,42 @@ class DQN(object):
         return self.memory
 
     def replay(self):
+        total_loss = {'action_loss': [], 'word_loss':[]}
         batch = self.get_batch()
-        print(len(batch[0]))
-        for episode in batch:
-            self.reset()
-            for word_time in episode:
-                for saccade in word_time:
-                    # get experience from batch
+        for episode in batch: # should only be one episode per batch
+            for word_focus in episode:
+                self.reset() # reset hidden states
+                action_loss_history = []
+
+                for saccade in word_focus:
+                    action_loss, word_loss = 0,0
+                    # get experience from saccade
                     s,a,r,s_prime,done,correct_word = saccade
-                    # Q(s, a; theta_target)
+
+                    # move data to GPU
+                    s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
+
+                    # network predicted action and word
                     action_pred,word_pred = self.model(s)
 
-                    loss = F.nll_loss(action_pred, torch.Tensor([a]).long())
+                    # action loss
+                    action_loss = F.nll_loss(action_pred, a)
+                    # record action loss
+                    action_loss_history.append(action_loss.item())
 
-                    if correct_word: # backprop word prediction
-                        print(correct_word, word_pred.shape)
-                        loss += F.nll_loss(word_pred, torch.Tensor([correct_word]).long())
+                    if correct_word: # if its time to predict a word
+                        word_pred = word_pred.to(self.device)
+                        correct_word = torch.Tensor([correct_word]).long().to(self.device)
+
+                        word_loss = F.nll_loss(word_pred, correct_word)
+                        # record losses
+                        total_loss['action_loss'].append(np.mean(action_loss_history))
+                        total_loss['word_loss'].append(word_loss.item())
+                        action_loss_history = []
+
+                    # total loss: combination of action and word losses
+                    loss = action_loss + word_loss
 
                     loss.backward(retain_graph=True)
                     self.opt.step()
+        return total_loss
