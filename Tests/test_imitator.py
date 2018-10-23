@@ -19,14 +19,10 @@ env = env_manager.Environment(data_dir='../data/',teach=IMITATE)
 imitator = DQN(6); actor = DQN(6); actor.epsilon = 0
 
 while True:
-    if not IMITATE:
-        # set monitor and env appropriately
-        mm.TEACH = False; env.TEACH = False
-        # update the actor with latest version of imitator
-        actor.copy(imitator.model)
-
-    s = env.reset(); done = False # reset the env
-    mm.reset_episode() # reset the metric monitor
+    # reset the env
+    s = env.reset(); done = False
+    # reset the metric monitor
+    mm.reset_episode()
 
     while not done:
         a,w = 0,0
@@ -51,7 +47,7 @@ while True:
 
     # store the info from the episode
     imitator.remember(mm.get_history(), IMITATE)
-    mm.end_episode() # record metrics, increment episode counter
+    mm.end_episode() # record metrics, increment mm.num_episodes
 
     # if we're acting we want to replay episodes and learn rewards
     if not IMITATE: total_loss = imitator.replay(actor.model)
@@ -61,7 +57,16 @@ while True:
     # logging: episode, losses OR reward info
     mm.log_status(total_loss)
 
+    # set things for the next loop;
     if (mm.num_episodes+1) % SWITCH_EVERY == 0:
-        IMITATE = not IMITATE # switching from imitation to acting or vice versa
-        imitator.model.IMITATE = IMITATE # remove of add softmax for actions of model pred
+
+        # switching from imitation to acting or vice versa
+        IMITATE = not IMITATE
+
+        # set monitor and env appropriately; remove of add softmax for actions of model pred
+        mm.TEACH = IMITATE; env.TEACH = IMITATE; imitator.model.IMITATE = IMITATE
+
+        # update the actor with latest version of imitator
+        actor.copy(imitator.model)
+
         print('Switching to ' + 'imitating' if IMITATE else 'acting')
