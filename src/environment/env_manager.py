@@ -79,7 +79,7 @@ class Environment(object):
         self.coords, overlap = env_helper.eye_word_overlap(self.words, eye_rect)
 
         if self.TEACH:
-            a = 1 if np.random.uniform() < .7 else np.random.choice([0,2,3],p=[.4,.4,.2])
+            a = 1 if np.random.uniform() < .5 else np.random.choice([0,2,3],p=[.4,.4,.2])
             if self.a_buffer:
                 a = self.a_buffer.pop()
             elif self.P.x == len(self.lines[self.P.y]):
@@ -128,7 +128,7 @@ class Environment(object):
         elif a == 4: # new line
             self.P.y += 1; self.P.x = 0
             if self.P.y == len(self.lines): # DONE, do something here
-                print('Done with document...')
+                done = True
             elif self.eye.y + self.D < self.env.shape[0]:
                 self.eye.y = int(self.lines[self.P.y][self.P.x].ymin)-25
                 self.eye.x = int(self.lines[self.P.y][self.P.x].xmin)-25
@@ -155,17 +155,14 @@ class Environment(object):
         if self.patience == 0:
             done = True
         # return ( s', r, done, correct_word )
-        return self.format_state(), r, done, correct_word
+        return self.format_state(), r, done, correct_word, a
 
     def visualize_eyetrace(self, r, show=False, reward_over_time=None):
         dir_location = 'images/%05d/' % self.num_episodes
-
         if not os.path.exists(dir_location): # mkdir
             os.mkdir(dir_location); os.mkdir(dir_location + 'env'); os.mkdir(dir_location + 'state')
 
-        #######################################################################
         ################################ ENV ##################################
-        #######################################################################
         plt.clf(); fig, ax = plt.subplots()
         ax.imshow(self.env)
 
@@ -188,9 +185,8 @@ class Environment(object):
         plt.savefig( dir_location + 'env/' + '%05d' % self.episode_count, bbox_inches='tight')
 
         if show: plt.show()
-        #######################################################################
+
         ################################ STATE ################################
-        #######################################################################
         plt.clf(); fig, ax = plt.subplots()
 
         state = self.format_state().squeeze().numpy() # get current state
