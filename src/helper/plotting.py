@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 def vs_time(data,labels=None,xlabel='',ylabel='',title='',save=True,location=''):
     plt.clf()
-    if type(data) == list:
+    if labels:
         for d,l in zip(data,labels):
             plt.plot(d, label=l)
         plt.legend()
