@@ -6,7 +6,8 @@ class MetricMonitor(object):
         self.metrics = {
             'reward': [],
             'action_distribution': [],
-            'episode_len': []
+            'episode_len': [],
+            'num_words_seen': []
         }
         self.imitator_loss = {
             'action_loss': [],
@@ -22,7 +23,8 @@ class MetricMonitor(object):
         self.episode = {
             'episode_len': 0,
             'reward': [],
-            'history': []
+            'history': [],
+            'action_distribution': [0,0,0,0,0,0]
         }
         if self.TEACH: self.episode['history'].append([])
 
@@ -41,7 +43,7 @@ class MetricMonitor(object):
             replacement_word = current_word
 
     def get_history(self):
-        if not self.TEACH: self.set_word_targets()
+        #if not self.TEACH: self.set_word_targets()
 
         return self.episode['history']
 
@@ -53,6 +55,8 @@ class MetricMonitor(object):
 
         else:
             self.episode['history'].append([s,a,r,s_prime,done,correct_word])
+
+        self.episode['action_distribution'][a] += 1
         self.episode['reward'].append(r)
         self.episode['episode_len'] += 1
 
@@ -63,20 +67,30 @@ class MetricMonitor(object):
 
             data = [self.imitator_loss['action_loss'], self.imitator_loss['word_loss']]
             labels = ['Action Loss', 'Word Loss']
-            P.vs_time(data, labels=labels,xlabel='Time',ylabel='Reward',title='Reward vs Time')
+            P.vs_time(data, labels=labels,xlabel='Time',ylabel='Loss',title='Loss vs Time')
 
-            print('Action loss:', np.mean(total_loss['action_loss']), 'Word loss:',np.mean(total_loss['word_loss']))
+            print('Episodes: {} Action loss: {} Word loss: {}'.format(
+                self.num_episodes, np.mean(total_loss['action_loss']),np.mean(total_loss['word_loss'])))
 
+            P.vs_time(self.metrics['num_words_seen'],xlabel='Time',ylabel='Words Seen',title='Words Seen vs Time')
         else:
             mean_reward = np.mean(self.metrics['reward'][-100:])
             print('Episodes: {}, Mean Reward (100): {}'.format(self.num_episodes, mean_reward))
 
-            # plot reward vs time
             P.vs_time(self.metrics['reward'],xlabel='Time',ylabel='Reward',title='Reward vs Time')
+
+        actions = np.array(self.metrics['action_distribution'])
+        action_distribution = [actions[:,i] for i in range(6)]
+        labels = ['Up','Right','Down','Left','New Line','Classify']
+        P.vs_time(action_distribution, labels=labels,xlabel='Time',ylabel='Action Probabilities',title='Action Probabilities vs Time')
 
     def end_episode(self):
         self.metrics['reward'].extend(self.episode['reward'])
-
         self.metrics['episode_len'].append(self.episode['episode_len'])
+        self.metrics['num_words_seen'].append(len(self.episode['history']))
 
+        x = np.array(self.episode['action_distribution'])
+
+
+        self.metrics['action_distribution'].append(x / x.sum().astype(np.float))
         self.num_episodes += 1
