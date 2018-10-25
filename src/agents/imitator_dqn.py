@@ -39,7 +39,7 @@ class DQN(object):
         # replay memory
         self.memory = []; self.imitate_memory = []
         # discount rate
-        self.gamma = 0.8
+        self.gamma = 0.9
         # exploration rate
         self.epsilon = 1
         # batch size
@@ -51,7 +51,7 @@ class DQN(object):
         # minimum exploration
         self.epsilon_min = 0.05
         # decay
-        self.epsilon_decay = 0.99999
+        self.epsilon_decay = 0.99
         # number of environment actions
         self.num_actions = num_actions
         # load reader network
@@ -66,21 +66,22 @@ class DQN(object):
     def reset(self):
         self.model.lstm.reset_hidden(self.device)
 
-    def copy(self,model):
-        # avoid leaf copy problem
+    def copy(self,imitator):
+        # copy data from imitator dqn to actor
         model.lstm.reset_hidden(self.device)
-        self.model.load_state_dict(model.state_dict())
+        self.epsilon = imitator.epsilon
+        self.model.IMITATE = imitator.IMITATE
+        self.model.load_state_dict(imitator.model.state_dict())
 
     def act(self,state):
+        # sample random action with probability epsilon
+        if uniform(0, 1) < self.epsilon:
+            return randint(0,self.num_actions-1), randint(0, self.num_words-1)
+
         state = state.to(self.device)
         q_values,w = self.model(state)
 
         w = torch.argmax(w,dim=1)
-        
-        # sample random action with probability epsilon
-        if uniform(0, 1) < self.epsilon:
-            return randint(0,self.num_actions-1),w
-
         a = torch.argmax(q_values,dim=1).cpu().data.numpy()[0]
 
         return a,w
@@ -106,9 +107,8 @@ class DQN(object):
         return self.memory
 
     def replay(self, actor):
-        print('Checking IMITATE for imitator and actor', self.model.IMITATE, actor.IMITATE)
         batch = self.get_batch()
-
+        action_q_values = []
         for episode in batch:
             self.reset(); actor.lstm.reset_hidden(self.device)
             for time_step in episode:
@@ -122,7 +122,10 @@ class DQN(object):
                 q_s,w = self.model(s)
                 q_s_a = q_s[0,a]
 
-                # if the round hasn't ended; estimate value of taking best action in s_prime
+                # save q values
+                action_q_values.append(q_s.cpu().data.numpy()[0])
+
+                # if the episode hasn't ended; estimate value of taking best action in s_prime
                 if not done:
                     s_prime =  s_prime.to(self.device)
                     # max(Q(s', a'; theta_actor))
@@ -139,6 +142,8 @@ class DQN(object):
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+
+        return action_q_values
 
     def imitate(self):
         total_loss = {'action_loss': [], 'word_loss':[]}
