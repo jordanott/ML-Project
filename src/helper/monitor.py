@@ -59,7 +59,7 @@ class MetricMonitor(object):
         self.episode['episode_len'] += 1
 
     def log_status(self, total_loss, epsilon=None):
-        labels = ['Up','Right','Down','Left','New Line','Classify']
+        actions = ['Up','Right','Down','Left','New Line','Classify']
 
         if self.TEACH:
             # store losses from imitation training
@@ -67,9 +67,9 @@ class MetricMonitor(object):
             self.imitator_loss['word_loss'].extend(total_loss['word_loss'])
 
             data = [self.imitator_loss['action_loss'], self.imitator_loss['word_loss']]
-            labels = ['Action Loss', 'Word Loss']
+            losses = ['Action Loss', 'Word Loss']
             # plot losses from imitation training
-            P.vs_time(data, labels=labels,xlabel='Time',ylabel='Loss',title='Loss vs Time')
+            P.vs_time(data, labels=losses,xlabel='Time',ylabel='Loss',title='Loss vs Time')
 
             # plot number of words seen in training
             P.vs_time(self.metrics['num_words_seen'],xlabel='Time',ylabel='Words Seen',title='Words Seen vs Time')
@@ -85,7 +85,7 @@ class MetricMonitor(object):
             P.vs_time(self.metrics['reward'],xlabel='Time',ylabel='Reward',title='Reward vs Time')
 
             # plot histogram of action q values for the episode
-            P.hist(total_loss, labels, xlabel='Q Values', title='Action Q Values',save=True, location='images/'+self.num_episodes)
+            P.hist(total_loss, actions, xlabel='Q Values', title='Action Q Values',save=True, location='images/'+str(self.num_episodes))
 
             print('Episodes: {}, Mean Reward: {}, Max: {}, Epsilon: {}'.format(
                 self.num_episodes, mean_reward, max_reward, epsilon))
@@ -93,7 +93,7 @@ class MetricMonitor(object):
         actions = np.array(self.metrics['action_distribution'])
         action_distribution = [actions[:,i] for i in range(6)]
         # plot distribution of actions taken for episode
-        P.vs_time(action_distribution, labels=labels,xlabel='Time',ylabel='Action Probabilities',title='Action Probabilities vs Time')
+        P.vs_time(action_distribution, labels=actions,xlabel='Time',ylabel='Action Probabilities',title='Action Probabilities vs Time')
 
     def end_episode(self):
         # store episode (reward, episode length, and num words seen)

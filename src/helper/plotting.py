@@ -1,9 +1,11 @@
+import matplotlib
+matplotlib.use('agg')
 import numpy as np
 import matplotlib.pyplot as plt
 
 def vs_time(data,labels=None,xlabel='',ylabel='',title='',save=True,location=''):
     plt.clf()
-    if labels:
+    if labels is not None:
         for d,l in zip(data,labels):
             plt.plot(d, label=l)
         plt.legend()
@@ -23,9 +25,10 @@ def hist(data, labels, xlabel='', title='',save=True, location=''):
     data = np.array(data)
     n_bins = 10; plt.clf()
 
-    plt.hist(x, n_bins, histtype='bar', label=labels)
+    plt.hist(data, n_bins, histtype='bar', label=labels)
+    plt.xlabel(xlabel)
     plt.legend()
-    plt.title('bars with legend')
+    plt.title(title)
 
     if save: plt.savefig(location + xlabel + '.png')
     else: plt.show()
