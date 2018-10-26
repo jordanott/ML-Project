@@ -2,13 +2,13 @@ import sys
 sys.path.append('../')
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from src.agents.imitator_dqn import DQN
 from src.helper.monitor import MetricMonitor
 from src.environment import env_manager, env_helper
 
-IMITATE = True; SWITCH_EVERY = 10
+IMITATE = True; SWITCH_EVERY = 25
+IMITATE_LIMIT = 10000; NET_COPY_TIME = 500; ACT_ONLY = False
 
 # monitor information
 mm = MetricMonitor(teach=IMITATE)
@@ -43,7 +43,7 @@ while True:
             env.visualize_eyetrace(r,reward_over_time=mm.episode['reward'])
 
     # if the teacher results are poor, redo them
-    if IMITATE and len(mm.episode['history']) < 20:
+    if IMITATE and len(mm.episode['history']) < 30:
         env.num_episodes -= 1; continue
 
     # store the info from the episode
@@ -59,7 +59,7 @@ while True:
     mm.log_status(loss_or_reward_info, imitator.epsilon)
 
     # set things for the next loop;
-    if (mm.num_episodes+1) % SWITCH_EVERY == 0:
+    if not ACT_ONLY and (mm.num_episodes+1) % SWITCH_EVERY == 0:
 
         # switching from imitation to acting or vice versa
         IMITATE = not IMITATE
@@ -69,7 +69,10 @@ while True:
         # remove of add softmax for actions of model pred
         imitator.model.IMITATE = IMITATE
 
+    if (mm.num_episodes+1) % NET_COPY_TIME == 0:
         # update the actor with latest version of imitator
-        actor.copy(imitator.model)
+        actor.copy(imitator)
+        print('Actor network updated...')
 
-        print('Switching to ' + 'imitating' if IMITATE else 'acting')
+    if mm.num_episodes > IMITATE_LIMIT:
+        ACT_ONLY = True
