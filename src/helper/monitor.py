@@ -59,7 +59,7 @@ class MetricMonitor(object):
         self.episode['episode_len'] += 1
 
     def log_status(self, total_loss, epsilon=None):
-        actions = ['Up','Right','Down','Left','New Line','Classify']
+        action_labels = ['Up','Right','Down','Left','New Line','Classify']
 
         if self.TEACH:
             # store losses from imitation training
@@ -85,7 +85,7 @@ class MetricMonitor(object):
             P.vs_time(self.metrics['reward'],xlabel='Time',ylabel='Reward',title='Reward vs Time')
 
             # plot histogram of action q values for the episode
-            P.hist(total_loss, actions, xlabel='Q Values', title='Action Q Values',save=True, location='images/'+str(self.num_episodes))
+            P.hist(total_loss, action_labels, xlabel='Q Values', title='Action Q Values',save=True, location='images/'+str(self.num_episodes))
 
             print('Episodes: {}, Mean Reward: {}, Max: {}, Epsilon: {}'.format(
                 self.num_episodes, mean_reward, max_reward, epsilon))
@@ -93,7 +93,7 @@ class MetricMonitor(object):
         actions = np.array(self.metrics['action_distribution'])
         action_distribution = [actions[:,i] for i in range(6)]
         # plot distribution of actions taken for episode
-        P.vs_time(action_distribution, labels=actions,xlabel='Time',ylabel='Action Probabilities',title='Action Probabilities vs Time')
+        P.vs_time(action_distribution, labels=action_labels,xlabel='Time',ylabel='Action Probabilities',title='Action Probabilities vs Time')
 
     def end_episode(self):
         # store episode (reward, episode length, and num words seen)

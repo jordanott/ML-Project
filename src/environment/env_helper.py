@@ -33,7 +33,7 @@ def load_form_and_xml(data_dir):
     form = imread(data_dir+'forms/'+form_file,mode='RGB')
     xml = parse(data_dir+'xml/'+xml_file).getroot()
 
-    return form,xml
+    return form,xml,form_file
 
 def eye_word_overlap(words, eye):
     """
@@ -96,7 +96,7 @@ def gen_new_env(data_dir,ds=2.0):
     data_dir (str):
     ds (float): down sample amount
     """
-    form, xml = load_form_and_xml(data_dir)
+    form, xml,form_file = load_form_and_xml(data_dir)
     word_ids = load_word_ids()
 
     lines = []
@@ -104,7 +104,8 @@ def gen_new_env(data_dir,ds=2.0):
     for line in xml[1]:
         lines.append([])
         for word in line:
-            if word.tag == 'word':
+            try:
+              if word.tag == 'word':
                 x1,y1 = int(word[0].attrib['x']),int(word[0].attrib['y'])
                 x2,y2 = int(word[-1].attrib['x']),int(word[-1].attrib['y'])
                 w,h = int(word[-1].attrib['width']),int(word[-1].attrib['height'])
@@ -123,5 +124,6 @@ def gen_new_env(data_dir,ds=2.0):
                         }
 
                 lines[-1].append(r)
-
+            except:
+              pass #print(word.attrib['text'],form_file)
     return form[::int(ds),::int(ds)], words, lines
