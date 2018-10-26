@@ -3,7 +3,6 @@ import random
 import numpy as np
 import torch.nn as nn
 import torch.optim as opt
-import matplotlib.pyplot as plt
 import torch.nn.functional as F
 
 from copy import deepcopy
@@ -54,6 +53,8 @@ class DQN(object):
         self.epsilon_decay = 0.99
         # number of environment actions
         self.num_actions = num_actions
+
+        self.num_words = num_words
         # load reader network
         self.model = Model(num_actions, num_words + 2)
         # model optimizer
@@ -68,9 +69,9 @@ class DQN(object):
 
     def copy(self,imitator):
         # copy data from imitator dqn to actor
-        model.lstm.reset_hidden(self.device)
+        imitator.model.lstm.reset_hidden(self.device)
         self.epsilon = imitator.epsilon
-        self.model.IMITATE = imitator.IMITATE
+        self.model.IMITATE = imitator.model.IMITATE
         self.model.load_state_dict(imitator.model.state_dict())
 
     def act(self,state):
