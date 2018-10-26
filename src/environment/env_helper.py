@@ -27,7 +27,7 @@ def overlap(a, b):  # returns 0 if rectangles don't intersect
     return 0
 
 def load_form_and_xml(data_dir):
-    form_file = 'a01-000u.png'#random.choice(os.listdir(data_dir + 'forms/'))
+    form_file = random.choice(os.listdir(data_dir + 'forms/'))
     xml_file = form_file.replace('.png','.xml')
 
     form = imread(data_dir+'forms/'+form_file,mode='RGB')
