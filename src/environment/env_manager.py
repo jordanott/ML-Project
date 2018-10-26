@@ -74,7 +74,7 @@ class Environment(object):
         return Tensor(state)
 
     def step(self, a, word):
-        r = -.3; done = False; correct_word = None
+        r = -.3; self.done = False; correct_word = None
         # build eye Rectangle
         eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
         # calculate overlap between eye and words
@@ -130,7 +130,7 @@ class Environment(object):
         elif a == 4: # new line
             self.P.y += 1; self.P.x = 0
             if self.P.y == len(self.lines): # DONE, do something here
-                done = True
+                self.done = True
             elif self.eye.y + self.D < self.env.shape[0]:
                 self.eye.y = int(self.lines[self.P.y][self.P.x].ymin)-25
                 self.eye.x = int(self.lines[self.P.y][self.P.x].xmin)-25
@@ -155,9 +155,9 @@ class Environment(object):
         self.patience -= 1; self.episode_count += 1
 
         if self.patience == 0:
-            done = True
+            self.done = True
         # return ( s', r, done, correct_word )
-        return self.format_state(), r, done, correct_word, a
+        return self.format_state(), r, self.done, correct_word, a
 
     def visualize_eyetrace(self, r, show=False, reward_over_time=None):
         dir_location = 'images/%05d/' % self.num_episodes
@@ -197,7 +197,7 @@ class Environment(object):
 
         if show: plt.show()
 
-        if self.patience == 1:
+        if self.patience == 1 or self.done:
             os.system('convert -delay 20 -loop 0 {dir}*.png {dir}env.gif'.format(dir=dir_location + 'env/'))
             os.system('convert -delay 20 -loop 0 {dir}*.png {dir}state.gif'.format(dir=dir_location + 'state/'))
             if reward_over_time is not None:
