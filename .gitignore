@@ -3,4 +3,5 @@ __pycache__
 data
 *.pyc
 word_frequency.txt
+char_frequency.txt
 images
