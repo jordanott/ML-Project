@@ -7,6 +7,7 @@ from pprint import pprint
 from xml.etree.ElementTree import parse
 
 words = {}
+chars = {}
 
 def words_in_doc(file_location):
     xml = parse(file_location).getroot()
@@ -17,6 +18,11 @@ def words_in_doc(file_location):
                 if word.attrib['text'] not in words:
                     words[word.attrib['text']] = 0
                 words[word.attrib['text']] += 1
+                # iterate letters
+                for char in word.attrib['text']:
+                    if char not in chars:
+                        chars[char] = 0
+                    chars[char] += 1
 
 def iter_docs(data_dir='../data/xml/'):
     corpus = {}
@@ -42,4 +48,9 @@ if __name__ == '__main__':
         for elem in sorted_words:
             word_freq.write(elem[0] + '|' + str(elem[1]) + '\n')
 
-    print(len(words))
+    with open('char_frequency.txt','w') as char_freq:
+        sorted_chars = sorted(chars.items(), key=operator.itemgetter(1),reverse=True)
+        for elem in sorted_chars:
+            char_freq.write(elem[0] + '|' + str(elem[1]) + '\n')
+
+    print('Words:',len(words),'Characters:',len(chars))

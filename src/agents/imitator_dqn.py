@@ -12,12 +12,12 @@ from src.networks.embedding import CNN
 from random import randint,uniform,sample
 
 class Model(nn.Module):
-    def __init__(self, num_actions, num_words):
+    def __init__(self, num_actions, num_chars):
         super(Model, self).__init__()
 
         self.embed = CNN()
         self.lstm = LSTM(64*29*29, hidden_size=256)
-        self.word = FF(input_size=256,num_outputs=num_words)
+        self.word = FF(input_size=256,num_outputs=num_chars)
         self.actions = FF(input_size=256,num_outputs=num_actions)
         self.IMITATE = True
 
@@ -34,7 +34,7 @@ class Model(nn.Module):
         return actions, word_prediction
 
 class DQN(object):
-    def __init__(self,num_actions,num_words=13551,VISUALIZE=False):
+    def __init__(self,num_actions,num_chars=80,VISUALIZE=False):
         # replay memory
         self.memory = []; self.imitate_memory = []
         # discount rate
@@ -54,9 +54,9 @@ class DQN(object):
         # number of environment actions
         self.num_actions = num_actions
 
-        self.num_words = num_words
+        self.num_chars = num_chars
         # load reader network
-        self.model = Model(num_actions, num_words + 2)
+        self.model = Model(num_actions, num_chars)
         # model optimizer
         self.opt = opt.RMSprop(self.model.parameters())
         # GPU
@@ -77,7 +77,7 @@ class DQN(object):
     def act(self,state):
         # sample random action with probability epsilon
         if uniform(0, 1) < self.epsilon:
-            return randint(0,self.num_actions-1), randint(0, self.num_words-1)
+            return randint(0,self.num_actions-1), randint(0, self.num_chars-1)
 
         state = state.to(self.device)
         q_values,w = self.model(state)
