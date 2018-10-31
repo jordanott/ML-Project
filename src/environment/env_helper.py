@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import imread
 from collections import namedtuple
 from xml.etree.ElementTree import parse
-from DataExploration.word_analysis import load_word_ids
+from DataExploration.word_analysis import load_word_ids,load_char_ids,char_ids_for_word
 
 Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
@@ -97,7 +97,7 @@ def gen_new_env(data_dir,ds=2.0):
     ds (float): down sample amount
     """
     form, xml,form_file = load_form_and_xml(data_dir)
-    word_ids = load_word_ids()
+    word_ids, char_ids = load_word_ids(), load_char_ids()
 
     lines = []
     words = {} # {coordinates : word}
@@ -113,14 +113,15 @@ def gen_new_env(data_dir,ds=2.0):
                 xmin = min(x1,x2); xmax = max(x1,x2)
                 ymin = min(y1,y2); ymax = max(y1,y2)
                 r = Rectangle(xmin/ds,ymin/ds,xmax/ds+w/ds,ymax/ds+h/ds)
-                
+
                 if r not in words:
                     words[r] = {
                         'text':word.attrib['text'],
                         'id':word_ids[word.attrib['text']],
                         'max':len(word.attrib['text']),
                         'hover_count':1,
-                        'hover_bonus':1
+                        'hover_bonus':1,
+                        'char_ids':char_ids_for_word(word.attrib['text'], char_ids)
                         }
 
                 lines[-1].append(r)
