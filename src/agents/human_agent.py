@@ -7,11 +7,12 @@ class HumanAgent(Agent):
     def __init__(self,plot=False):
         super(HumanAgent,self).__init__()
         self.PLOT = plot
-        
+
     def act(self, state):
         if self.PLOT:
             plt.imshow(state)
             plt.show()
 
         a = int(input('Action: '))
-        return a
+        c = int(input('Character: '))
+        return a, c
