@@ -114,6 +114,7 @@ def gen_new_env(data_dir,ds=2.0):
 
     lines = []
     words = {} # {coordinates : word}
+    whole_page_char_ids = []
     for line in xml[1]:
         lines.append([])
         for word in line:
@@ -127,6 +128,9 @@ def gen_new_env(data_dir,ds=2.0):
                 ymin = min(y1,y2); ymax = max(y1,y2)
                 r = Rectangle(xmin/ds,ymin/ds,xmax/ds+w/ds,ymax/ds+h/ds)
 
+                # change word text to list of char ids
+                word_char_ids = word_to_char_ids_swap(word.attrib['text'], char_ids)
+
                 if r not in words:
                     words[r] = {
                         'text':word.attrib['text'],
@@ -134,10 +138,14 @@ def gen_new_env(data_dir,ds=2.0):
                         'max':len(word.attrib['text']),
                         'hover_count':1,
                         'hover_bonus':1,
-                        'char_ids':word_to_char_ids_swap(word.attrib['text'], char_ids)
+                        'char_ids':word_char_ids
                         }
 
                 lines[-1].append(r)
+                # add list of char ids plus space
+                word_char_ids.append(char_ids[' '])
+                whole_page_char_ids.extend( word_char_ids )
             except:
               pass #print(word.attrib['text'],form_file)
-    return form[::int(ds),::int(ds)], words, lines, char_ids
+              
+    return form[::int(ds),::int(ds)], words, lines, char_ids, whole_page_char_ids

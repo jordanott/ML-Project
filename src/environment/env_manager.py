@@ -29,7 +29,7 @@ class Environment(object):
         pass
 
     def new_env(self):
-        self.env,self.env_words,self.lines,self.char_ids = env_helper.gen_new_env(self.data_dir)
+        self.env,self.env_words,self.lines,self.char_ids,self.whole_page_char_ids = env_helper.gen_new_env(self.data_dir)
 
     def reset(self):
         """ Generates new env, clears eye history, and sets random eye location """
