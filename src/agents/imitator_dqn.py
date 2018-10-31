@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from copy import deepcopy
 from src.networks.ff import FF
 from src.networks.lstm import LSTM
+from warpctc_pytorch import CTCLoss
 from src.networks.embedding import CNN
 from random import randint,uniform,sample
 
@@ -29,7 +30,7 @@ class Model(nn.Module):
         if self.IMITATE: actions = F.log_softmax(actions, dim=1)
 
         word_prediction = self.word(lstm_out)
-        word_prediction = F.log_softmax(word_prediction, dim=1)
+        #word_prediction = F.log_softmax(word_prediction, dim=1)
 
         return actions, word_prediction
 
@@ -87,18 +88,11 @@ class DQN(object):
 
         return a,w
 
-    def remember(self,episode,IMITATE=True):
+    def remember(self,episode):
         if len(self.memory) == self.memory_size:
             del self.memory[0]
 
-        if IMITATE:
-            for idx in range(len(episode)):
-                if episode[idx][-1][-1] is None:
-                    del episode[idx]
-
-            self.imitate_memory = episode
-        else:
-            self.memory.append(episode)
+        self.memory.append(episode)
 
     def get_batch(self):
         # if replay memory is big enough take random sample
@@ -146,7 +140,44 @@ class DQN(object):
 
         return action_q_values
 
-    def imitate(self):
+    def imitate(self, states_actions, words):
+        CTC = CTCLoss()
+        total_action_loss = 0
+        action_loss_history = []; char_predictions = []
+        self.reset()
+        for s, a in states_actions:
+            # move data to GPU
+            s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
+            # network predicted action and char
+            action_pred,char_pred = self.model(s)
+
+            # save character predicted for ctc loss
+            char_predictions.append(char_pred)
+
+            # action loss
+            action_loss = F.nll_loss(action_pred, a)
+            # record action loss
+            action_loss_history.append(action_loss.item()); total_action_loss += action_loss
+
+        words = torch.Tensor(words)      #[:12].clamp(0,5)
+        # seq x batch x alphabet size
+        char_predictions = torch.stack(char_predictions) # [:,:,:5]
+
+        pred_len = torch.IntTensor([char_predictions.shape[0]])
+        word_len = torch.IntTensor([words.shape[0]])
+
+        ctc_loss = CTC(char_predictions, words, pred_len, word_len)
+
+        loss = ctc_loss.to(self.device) + total_action_loss
+
+        self.opt.zero_grad()
+        loss.backward(retain_graph=True)
+        self.opt.step()
+
+        return {'word_loss': ctc_loss.item(), 'action_loss': np.mean(action_loss_history)}
+
+
+    '''def imitate(self):
         total_loss = {'action_loss': [], 'word_loss':[]}
 
         for word_focus in self.imitate_memory:
@@ -188,3 +219,4 @@ class DQN(object):
                 self.opt.step()
 
         return total_loss
+        '''

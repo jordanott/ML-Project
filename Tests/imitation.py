@@ -5,7 +5,7 @@ import numpy as np
 
 from src.agents.imitator_dqn import DQN
 from src.helper.monitor import MetricMonitor
-from src.environment import env_manager, env_helper
+from src.environment import env_manager, env_helper, env_teacher
 
 IMITATE = True; VISUALIZE_EVERY = 100
 IMITATE_LIMIT = 10000; NET_COPY_TIME = 100
@@ -13,36 +13,23 @@ IMITATE_LIMIT = 10000; NET_COPY_TIME = 100
 # monitor information
 mm = MetricMonitor(teach=IMITATE)
 # define env
-env = env_manager.Environment(data_dir='../data/',teach=IMITATE)
+teacher = env_teacher.Environment(data_dir='../data/')
+env = env_manager.Environment(data_dir='../data/')
 
 # Initialize agents
 imitator = DQN(6); actor = DQN(6)
 
 for i in range(IMITATE_LIMIT):
     # reset the env
-    s = env.reset(); done = False
+    s = teacher.reset()
     # reset the metric monitor
     mm.reset_episode()
 
-    while not done: # loop while the episode runs
-        # environment returns new state, reward, done
-        s_prime, r, done, correct_word, a = env.step(0,0)
-
-        # save episode info
-        mm.store(s,a,r,s_prime,done,correct_word)
-
-        s = s_prime
-
-    # if the teacher results are poor, redo them
-    if len(mm.episode['history']) < 30:
-        env.num_episodes -= 1; continue
-
-    # store the info from the episode
-    imitator.remember(mm.get_history(), IMITATE)
-    mm.end_episode() # record metrics, increment mm.num_episodes
-
+    states_actions, words = teacher.generate_examples()
     # imitate the teacher
-    action_ctc_loss = imitator.imitate()
+    action_ctc_loss = imitator.imitate(states_actions, words)
+
+    mm.end_episode() # record metrics, increment mm.num_episodes
 
     # logging: episode, losses OR reward info
     mm.log_status(action_ctc_loss, 0)
