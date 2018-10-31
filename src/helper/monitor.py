@@ -66,7 +66,7 @@ class MetricMonitor(object):
             self.imitator_loss['action_loss'].append(total_loss['action_loss'])
             self.imitator_loss['word_loss'].append(total_loss['word_loss'])
 
-            data = [self.imitator_loss['action_loss'], self.imitator_loss['word_loss']]
+            data = [self.imitator_loss['action_loss'], np.log(self.imitator_loss['word_loss'])]
             losses = ['Action Loss', 'Word Loss']
             # plot losses from imitation training
             P.vs_time(data, labels=losses,xlabel='Time',ylabel='Loss',title='Loss vs Time')

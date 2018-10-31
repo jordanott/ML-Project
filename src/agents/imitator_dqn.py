@@ -145,6 +145,7 @@ class DQN(object):
         total_action_loss = 0
         action_loss_history = []; char_predictions = []
         self.reset()
+
         for s, a in states_actions:
             # move data to GPU
             s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
@@ -158,18 +159,20 @@ class DQN(object):
             action_loss = F.nll_loss(action_pred, a)
             # record action loss
             action_loss_history.append(action_loss.item()); total_action_loss += action_loss
-
-        words = torch.Tensor(words)      #[:12].clamp(0,5)
+        
+        # Must be an IntTensor!
+        words = torch.Tensor(words).int()
         # seq x batch x alphabet size
-        char_predictions = torch.stack(char_predictions) # [:,:,:5]
+        char_predictions = torch.stack(char_predictions)
 
         pred_len = torch.IntTensor([char_predictions.shape[0]])
         word_len = torch.IntTensor([words.shape[0]])
 
         ctc_loss = CTC(char_predictions, words, pred_len, word_len)
 
-        loss = ctc_loss.to(self.device) + total_action_loss
-
+        # calculate total loss
+        loss = ctc_loss.to(self.device) # + total_action_loss
+        
         self.opt.zero_grad()
         loss.backward(retain_graph=True)
         self.opt.step()

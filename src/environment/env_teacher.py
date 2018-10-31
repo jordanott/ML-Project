@@ -97,8 +97,8 @@ class Environment(object):
 
             states_actions.append([self.format_state(), a])
 
-            if self.episode_count > 10:
-                self.done = True
+            #if self.episode_count > 10:
+            #    self.done = True
                 
             if plot:
                 self.visualize_eyetrace()
