@@ -52,6 +52,8 @@ class Environment(object):
         # pointer for teaching
         self.P = EyeLocation(0,0)
 
+        # action buffer
+        self.a_buffer = []
         self.predicted_chars = []
         self.episode_count = 0
 
@@ -67,22 +69,60 @@ class Environment(object):
         return Tensor(state)
 
     def step(self, a, char):
-        r = 0; self.done = False; correct_word = None
-
         # add the char just predicted
         self.predicted_chars.append(char)
         # decode the list of chars
         decoded_word = self.decode(self.predicted_chars)
 
-        # check if the decoded word is correct; assign rewards
+        # check if
         if decoded_word == correct_word:
-            r = 1; self.patience = 75; del self.words[self.coords]
-        elif len(decoded_word) >= len(correct_word): r = -1
+            r = 1
+        else:
+            r = -1
 
+        r = -.3; self.done = False; correct_word = None
         # build eye Rectangle
         eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
         # calculate overlap between eye and words
         self.coords, overlap = env_helper.eye_word_overlap(self.words, eye_rect)
+
+        a = 1 if np.random.uniform() < .5 else np.random.choice([0,2,3],p=[.4,.4,.2])
+        if self.a_buffer:
+            a = self.a_buffer.pop()
+        elif self.P.x == len(self.lines[self.P.y]):
+            self.a_buffer = [4] + [np.random.choice([0,1,2,3],p=[.2,.5,.2,.1]) for _ in range(3)]
+        else:
+            current_word = self.lines[self.P.y][self.P.x]
+
+            # CHECK ~ classification
+            eye_rect = env_helper.Rectangle(self.eye.x + self.M, self.eye.y, self.eye.x + self.M + self.D, self.eye.y + self.D)
+            coords, overlap = env_helper.eye_word_overlap(self.words, eye_rect)
+            TIME_TO_CLASSIFY = coords != current_word
+            # CHECK ~ going down
+            eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y + self.M, self.eye.x + self.D, self.eye.y + self.M + self.D)
+            GOING_DOWN = env_helper.overlap(current_word, eye_rect) == 1e-9
+            # CHECK ~ going up
+            eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y - self.M, self.eye.x + self.D, self.eye.y - self.M + self.D)
+            GOING_UP = env_helper.overlap(current_word, eye_rect) == 1e-9
+
+            eye_rect = env_helper.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
+            OVERLAP = env_helper.overlap(current_word, eye_rect) > 1e-9
+
+            #dist_away = self.eye.y + self.D/2.0 - (current_word.ymax + current_word.ymin) / 2.0
+            SMALL_WORD = current_word.xmax - current_word.xmin < self.M
+
+            END_LINE_CLASSIFY = OVERLAP and self.eye.x + self.M + self.D > self.env.shape[1]
+
+            if TIME_TO_CLASSIFY and SMALL_WORD and OVERLAP:
+                self.a_buffer = [5,1]
+            elif (TIME_TO_CLASSIFY and OVERLAP) or END_LINE_CLASSIFY:
+                a = 5
+            elif GOING_UP and a == 0:
+                a = 2
+            elif GOING_DOWN and a == 2:
+                a = 0
+            elif not TIME_TO_CLASSIFY and END_LINE_CLASSIFY:
+                a = 5
 
         if a == 0: # move up
             if self.eye.y - self.M > -1: self.eye.y -= self.M/2
@@ -99,12 +139,25 @@ class Environment(object):
             elif self.eye.y + self.D < self.env.shape[0]:
                 self.eye.y = int(self.lines[self.P.y][self.P.x].ymin)-25
                 self.eye.x = int(self.lines[self.P.y][self.P.x].xmin)-25
+        elif a == 5: # classify
+            r = -1; self.P.x += 1
+
+            if self.coords is not None:
+                # teacher is always right
+                word = self.words[self.coords]['id']
+
+                correct_word = self.words[self.coords]['id']
+
+                if self.words[self.coords]['id'] == word: # if the agent correctly predicts the word
+                    r = 1; del self.words[self.coords] # remove word if predicted correctly
+                    self.patience = 75
+            else:
+                correct_word = len(self.env_words) + 1
 
         self.patience -= 1; self.episode_count += 1
 
-        # if patience has run out the episode ends
-        if self.patience == 0: self.done = True
-
+        if self.patience == 0:
+            self.done = True
         # return ( s', r, done, correct_word )
         return self.format_state(), r, self.done, correct_word, a
 
