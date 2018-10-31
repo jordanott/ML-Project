@@ -63,8 +63,8 @@ class MetricMonitor(object):
 
         if self.TEACH:
             # store losses from imitation training
-            self.imitator_loss['action_loss'].extend(total_loss['action_loss'])
-            self.imitator_loss['word_loss'].extend(total_loss['word_loss'])
+            self.imitator_loss['action_loss'].append(total_loss['action_loss'])
+            self.imitator_loss['word_loss'].append(total_loss['word_loss'])
 
             data = [self.imitator_loss['action_loss'], self.imitator_loss['word_loss']]
             losses = ['Action Loss', 'Word Loss']
