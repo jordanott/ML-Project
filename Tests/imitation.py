@@ -7,7 +7,7 @@ from src.agents.imitator_dqn import DQN
 from src.helper.monitor import MetricMonitor
 from src.environment import env_manager, env_helper, env_teacher
 
-VISUALIZE_EVERY = 100; IMITATE_LIMIT = 10000; NET_COPY_TIME = 100
+VISUALIZE_EVERY = 100; IMITATE_LIMIT = 100000; NET_COPY_TIME = 100
 
 # monitor information
 mm = MetricMonitor(teach=True)
@@ -27,13 +27,10 @@ for i in range(IMITATE_LIMIT):
     states_actions, words = teacher.generate_examples()
     # imitate the teacher
     action_ctc_loss, greedy_pred = imitator.imitate(states_actions, words)
-
-    pred_decode = env_helper.decode(greedy_pred, teacher.char_ids)
+    
     true_decode = env_helper.word_to_char_ids_swap(words, teacher.char_ids)
-
-    print 'Predicted:', ''.join(pred_decode)
-    print 'True:', ''.join(true_decode)
-
+    pred_decode = env_helper.decode(greedy_pred, teacher.char_ids)
+    
     mm.end_episode() # record metrics, increment mm.num_episodes
 
     # logging: episode, losses OR reward info
@@ -41,7 +38,10 @@ for i in range(IMITATE_LIMIT):
 
     if (i + 1) % NET_COPY_TIME == 0:
         print 'Saving imitator model'
-        imitator.save()
+        #imitator.save()
+        print 'Predicted:\n', ''.join(pred_decode)
+        print
+        print 'True:\n', ''.join(true_decode)
 
 # set monitor and env appropriately
 mm.TEACH = False; env.TEACH = False

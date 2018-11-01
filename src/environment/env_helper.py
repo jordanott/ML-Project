@@ -1,5 +1,6 @@
 import os
 import sys
+import torch
 import random
 import numpy as np
 sys.path.append('../../')
@@ -27,7 +28,8 @@ def overlap(a, b):  # returns 0 if rectangles don't intersect
     return 0
 
 def load_form_and_xml(data_dir):
-    form_file = random.choice(os.listdir(data_dir + 'forms/'))
+    print 'ONLY USING ONE FORM!!!!'
+    form_file = 'a01-000u.png' #random.choice(os.listdir(data_dir + 'forms/'))
     xml_file = form_file.replace('.png','.xml')
 
     form = imread(data_dir+'forms/'+form_file,mode='RGB')
@@ -97,7 +99,11 @@ def assign_hover_bonus(coords):
 def word_to_char_ids_swap(word, char_ids):
     list_char_ids = []
     for char in word:
-        list_char_ids.append(char_ids[char])
+        if type(char) == type(torch.Tensor()): 
+            x = int(char.cpu().numpy())
+            list_char_ids.append(char_ids[x])
+        else:
+            list_char_ids.append(char_ids[char])
     return list_char_ids
 
 def decode(list_char_ids, char_ids, blank_char=0):
@@ -106,7 +112,7 @@ def decode(list_char_ids, char_ids, blank_char=0):
     for i in range(len(list_char_ids)):
         if i != 0 and list_char_ids[i] != list_char_ids[i-1] and list_char_ids[i] != blank_char:
             processed_char_ids.append(list_char_ids[i])
-
+    
     return word_to_char_ids_swap(processed_char_ids, char_ids)
 
 # loading new environment (pages)
@@ -124,7 +130,7 @@ def gen_new_env(data_dir,ds=2.0):
     for line in xml[1]:
         lines.append([])
         for word in line:
-            try:
+            try:            
               if word.tag == 'word':
                 x1,y1 = int(word[0].attrib['x']),int(word[0].attrib['y'])
                 x2,y2 = int(word[-1].attrib['x']),int(word[-1].attrib['y'])
@@ -136,7 +142,7 @@ def gen_new_env(data_dir,ds=2.0):
 
                 # change word text to list of char ids
                 word_char_ids = word_to_char_ids_swap(word.attrib['text'], char_ids)
-
+                
                 if r not in words:
                     words[r] = {
                         'text':word.attrib['text'],

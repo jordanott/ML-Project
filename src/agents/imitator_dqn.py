@@ -171,7 +171,7 @@ class DQN(object):
 
             # save character predicted for ctc loss
             char_predictions.append(char_pred)
-
+            
             # action loss
             action_loss = F.nll_loss(action_pred, a)
             # record action loss
