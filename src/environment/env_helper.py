@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import imread
 from collections import namedtuple
 from xml.etree.ElementTree import parse
-from DataExploration.word_analysis import load_word_ids,load_char_ids,word_to_char_ids_swap
+from DataExploration.word_analysis import load_word_ids,load_char_ids
 
 Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
@@ -94,6 +94,12 @@ def assign_hover_bonus(coords):
     coords['hover_bonus'] += dir / float(coords['max'])
     coords['hover_count'] += 1
 
+def word_to_char_ids_swap(word, char_ids):
+    list_char_ids = []
+    for char in word:
+        list_char_ids.append(char_ids[char])
+    return list_char_ids
+
 def decode(list_char_ids, char_ids, blank_char=0):
     processed_char_ids = []
 
@@ -147,5 +153,5 @@ def gen_new_env(data_dir,ds=2.0):
                 whole_page_char_ids.extend( word_char_ids )
             except:
               pass #print(word.attrib['text'],form_file)
-              
+
     return form[::int(ds),::int(ds)], words, lines, char_ids, whole_page_char_ids

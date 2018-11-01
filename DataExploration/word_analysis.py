@@ -29,12 +29,6 @@ def iter_docs(data_dir='../data/xml/'):
     for xml_file in os.listdir(data_dir):
         words_in_doc(data_dir + xml_file)
 
-def word_to_char_ids_swap(word, char_ids):
-    list_char_ids = []
-    for char in word:
-        list_char_ids.append(char_ids[char])
-    return list_char_ids
-
 def load_char_ids():
     char_ids = {0:'~'}
     with open('../DataExploration/char_frequency.txt','r') as char_freq:
