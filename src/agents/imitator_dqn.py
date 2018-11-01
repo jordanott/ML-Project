@@ -15,24 +15,35 @@ from random import randint,uniform,sample
 class Model(nn.Module):
     def __init__(self, num_actions, num_chars):
         super(Model, self).__init__()
+        # modules for action prediction
+        self.a_cnn = CNN()
+        self.a_lstm = LSTM(64*29*29, hidden_size=256)
+        self.a_ff = FF(input_size=256,num_outputs=num_actions)
 
-        self.embed = CNN()
-        self.lstm = LSTM(64*29*29, hidden_size=256)
-        self.word = FF(input_size=256,num_outputs=num_chars)
-        self.actions = FF(input_size=256,num_outputs=num_actions)
+        # modules for character prediction
+        self.c_cnn = CNN()
+        self.c_lstm = LSTM(64*29*29, hidden_size=256)
+        self.c_ff = FF(input_size=256,num_outputs=num_chars)
+
         self.IMITATE = True
 
+    def reset_lstm(self):
+        self.c_lstm.reset_hidden()
+        self.a_lstm.reset_hidden()
+
     def forward(self, x):
-        e = self.embed(x).unsqueeze(0)
-        lstm_out = self.lstm(e)
+        a = self.a_cnn(x).unsqueeze(0)
+        a = self.a_lstm(a)
+        a = self.a_ff(a)
 
-        actions = self.actions(lstm_out)
-        if self.IMITATE: actions = F.log_softmax(actions, dim=1)
+        c = self.c_cnn(x).unsqueeze(0)
+        c = self.c_lstm(c)
+        c = self.c_ff(c)
 
-        word_prediction = self.word(lstm_out)
-        #word_prediction = F.log_softmax(word_prediction, dim=1)
+        if self.IMITATE: a = F.log_softmax(a, dim=1)
+        else: c = F.log_softmax(c, dim=1)
 
-        return actions, word_prediction
+        return a, c
 
 class DQN(object):
     def __init__(self,num_actions,num_chars=80,VISUALIZE=False):
@@ -66,11 +77,17 @@ class DQN(object):
         self.model = self.model.to(self.device)
 
     def reset(self):
-        self.model.lstm.reset_hidden(self.device)
+        self.model.reset_lstm()
+
+    def save(self):
+        weight_file = 'imitator_dqn' if self.model.IMITATE else 'actor_dqn'
+        
+        with open(weight_file, 'wb') as f:
+            torch.save(self.model, f)
 
     def copy(self,imitator):
         # copy data from imitator dqn to actor
-        imitator.model.lstm.reset_hidden(self.device)
+        imitator.model.reset_lstm()
         self.epsilon = imitator.epsilon
         self.model.IMITATE = imitator.model.IMITATE
         self.model.load_state_dict(imitator.model.state_dict())
@@ -105,7 +122,7 @@ class DQN(object):
         batch = self.get_batch()
         action_q_values = []
         for episode in batch:
-            self.reset(); actor.lstm.reset_hidden(self.device)
+            self.reset(); actor.reset_lstm()
             for time_step in episode:
                 # get experience from batch
                 s,a,r,s_prime,done,correct_word = time_step
@@ -159,7 +176,7 @@ class DQN(object):
             action_loss = F.nll_loss(action_pred, a)
             # record action loss
             action_loss_history.append(action_loss.item()); total_action_loss += action_loss
-        
+
         # Must be an IntTensor!
         words = torch.Tensor(words).int()
         # seq x batch x alphabet size
@@ -171,13 +188,15 @@ class DQN(object):
         ctc_loss = CTC(char_predictions, words, pred_len, word_len)
 
         # calculate total loss
-        loss = ctc_loss.to(self.device) # + total_action_loss
-        
+        loss = ctc_loss.to(self.device) + total_action_loss
+
         self.opt.zero_grad()
         loss.backward(retain_graph=True)
         self.opt.step()
 
-        return {'word_loss': ctc_loss.item(), 'action_loss': np.mean(action_loss_history)}
+        greedy = char_predictions.squeeze().argmax(dim=1)
+
+        return {'word_loss': ctc_loss.item(), 'action_loss': np.mean(action_loss_history)}, greedy
 
 
     '''def imitate(self):

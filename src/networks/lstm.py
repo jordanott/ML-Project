@@ -11,13 +11,11 @@ class LSTM(nn.Module):
 
         # init lstm
         self.rnn = nn.LSTM(input_size, hidden_size, num_layers, dropout=0.2)
-        # GPU
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # init hidden state
-        self.reset_hidden(self.device)
+        self.reset_hidden()
 
 
-    def reset_hidden(self,device):
+    def reset_hidden(self,device='cuda'):
         self.hidden = (torch.zeros(self.num_layers, 1, self.hidden_size).to(device),
             torch.zeros(self.num_layers, 1, self.hidden_size).to(device))
 
