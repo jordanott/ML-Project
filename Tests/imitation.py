@@ -5,18 +5,18 @@ import numpy as np
 
 from src.agents.imitator_dqn import DQN
 from src.helper.monitor import MetricMonitor
-from src.environment import env_manager, env_helper, env_teacher
+from src.environment import env_reinforcer, env_teacher
 
 VISUALIZE_EVERY = 100; IMITATE_LIMIT = 100000; NET_COPY_TIME = 100
 
 # monitor information
 mm = MetricMonitor(teach=True)
 # define env
-teacher = env_teacher.Environment(data_dir='../data/')
-env = env_manager.Environment(data_dir='../data/')
+teacher = env_teacher.Teacher()
+env = env_reinforcer.Reinforcer()
 
 # Initialize imitator agent
-imitator = DQN(6)
+imitator = DQN(5)
 
 for i in range(IMITATE_LIMIT):
     # reset the env
@@ -27,10 +27,10 @@ for i in range(IMITATE_LIMIT):
     states_actions, words = teacher.generate_examples()
     # imitate the teacher
     action_ctc_loss, greedy_pred = imitator.imitate(states_actions, words)
-    
+
     true_decode = env_helper.word_to_char_ids_swap(words, teacher.char_ids)
     pred_decode = env_helper.decode(greedy_pred, teacher.char_ids)
-    
+
     mm.end_episode() # record metrics, increment mm.num_episodes
 
     # logging: episode, losses OR reward info
@@ -52,7 +52,7 @@ target = imitator
 target.model.IMITATE = False
 
 # the actor takes actions which the target network will learn from
-actor = DQN(6); actor.copy(target)
+actor = DQN(5); actor.copy(target)
 
 while True:
     # reset the env
