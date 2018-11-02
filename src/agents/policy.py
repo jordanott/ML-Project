@@ -9,7 +9,6 @@ from agent import Agent
 from copy import deepcopy
 from src.networks.ff import FF
 from src.networks.lstm import LSTM
-from warpctc_pytorch import CTCLoss
 from src.networks.embedding import CNN
 from random import randint,uniform,sample
 
@@ -46,25 +45,15 @@ class Model(nn.Module):
 
         return a, c
 
-class DQN(Agent):
-    def __init__(self,num_actions,num_chars=80,VISUALIZE=False):
-        super(DQN, self).__init__()
+class Policy(Agent):
+    def __init__(self,num_actions=2,num_chars=80,VISUALIZE=False):
+        super(Policy, self).__init__()
         # replay memory
         self.memory = []; self.imitate_memory = []
         # discount rate
         self.gamma = 0.9
-        # exploration rate
-        self.epsilon = 1
-        # batch size
-        self.batch_size = 1
-        # memory size
-        self.memory_size = 2000
         # visualize
         self.visualize = VISUALIZE
-        # minimum exploration
-        self.epsilon_min = 0.05
-        # decay
-        self.epsilon_decay = 0.99
         # number of environment actions
         self.num_actions = num_actions
 
@@ -121,6 +110,7 @@ class DQN(Agent):
         return self.memory
 
     def replay(self, actor):
+        # should be used to perform policy gradient update (PPO)
         batch = self.get_batch()
         action_q_values = []
         for episode in batch:
