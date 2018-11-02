@@ -9,7 +9,6 @@ from agent import Agent
 from copy import deepcopy
 from src.networks.ff import FF
 from src.networks.lstm import LSTM
-from warpctc_pytorch import CTCLoss
 from src.networks.embedding import CNN
 from random import randint,uniform,sample
 
@@ -77,22 +76,6 @@ class DQN(Agent):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # move model to GPU
         self.model = self.model.to(self.device)
-
-    def reset(self):
-        self.model.reset_lstm()
-
-    def save(self):
-        weight_file = 'imitator_dqn' if self.model.IMITATE else 'actor_dqn'
-
-        with open(weight_file, 'wb') as f:
-            torch.save(self.model, f)
-
-    def copy(self,imitator):
-        # copy data from imitator dqn to actor
-        imitator.model.reset_lstm()
-        self.epsilon = imitator.epsilon
-        self.model.IMITATE = imitator.model.IMITATE
-        self.model.load_state_dict(imitator.model.state_dict())
 
     def act(self,state):
         # sample random action with probability epsilon

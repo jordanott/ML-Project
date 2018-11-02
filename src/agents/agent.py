@@ -6,14 +6,21 @@ class Agent(object):
     def __init__(self):
         pass
 
-    def act(self):
-        pass
+    def reset(self):
+        self.model.reset_lstm()
 
-    def update(self):
-        pass
+    def save(self):
+        weight_file = 'imitator_dqn' if self.model.IMITATE else 'actor_dqn'
 
-    def copy(self):
-        pass
+        with open(weight_file, 'wb') as f:
+            torch.save(self.model, f)
+
+    def copy(self,imitator):
+        # copy data from imitator dqn to actor
+        imitator.model.reset_lstm()
+        self.epsilon = imitator.epsilon
+        self.model.IMITATE = imitator.model.IMITATE
+        self.model.load_state_dict(imitator.model.state_dict())
 
     def imitate(self, states_actions, words):
         CTC = CTCLoss()
