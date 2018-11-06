@@ -1,4 +1,9 @@
 import torch
+import numpy as np
+import torch.nn as nn
+import torch.optim as opt
+import torch.nn.functional as F
+
 from warpctc_pytorch import CTCLoss
 
 class Agent(object):
@@ -51,24 +56,25 @@ class Agent(object):
         word_len = torch.IntTensor([words.shape[0]])
 
         ctc_loss = CTC(char_predictions, words, pred_len, word_len).to(self.device)
+        ctc_loss_val = ctc_loss.item()
 
-        if ctc_loss.item() == float('inf') or ctc_loss.item() == -float('inf'):
+        if ctc_loss_val == float('inf') or ctc_loss_val == -float('inf'):
             print("WARNING: received an inf loss, setting loss value to 0")
-            ctc_loss = 0
+            ctc_loss_val = 0;
 
         # calculate total loss
         loss = ctc_loss + total_action_loss
 
         self.opt.zero_grad()
-        loss.backward(retain_graph=True)
+        loss.backward()
 
         # Norm cutoff to prevent explosion of gradients
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 400)
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10)
         self.opt.step()
 
         greedy = char_predictions.squeeze().argmax(dim=1)
 
-        return {'word_loss': ctc_loss.item(), 'action_loss': np.mean(action_loss_history)}, greedy
+        return {'word_loss': ctc_loss_val, 'action_loss': min(10,np.mean(action_loss_history))}, greedy
 
 
 '''def imitate(self):

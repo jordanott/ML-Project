@@ -13,7 +13,7 @@ VISUALIZE_EVERY = 100; IMITATE_LIMIT = 100000; NET_COPY_TIME = 100
 mm = MetricMonitor(teach=True)
 # define env
 teacher = env_teacher.Teacher()
-env = env_reinforcer.Reinforcer()
+reinforcer = env_reinforcer.Reinforcer()
 
 # Initialize imitator agent
 imitator = DQN(5)
@@ -28,8 +28,8 @@ for i in range(IMITATE_LIMIT):
     # imitate the teacher
     action_ctc_loss, greedy_pred = imitator.imitate(states_actions, words)
 
-    true_decode = env_helper.word_to_char_ids_swap(words, teacher.char_ids)
-    pred_decode = env_helper.decode(greedy_pred, teacher.char_ids)
+    true_decode = teacher.word_to_char_ids_swap(words, teacher.char_ids)
+    pred_decode = teacher.decode(greedy_pred, teacher.char_ids)
 
     mm.end_episode() # record metrics, increment mm.num_episodes
 
@@ -44,7 +44,7 @@ for i in range(IMITATE_LIMIT):
         print 'True:\n', ''.join(true_decode)
 
 # set monitor and env appropriately
-mm.TEACH = False; env.TEACH = False
+mm.TEACH = False; reinforcer.TEACH = False
 
 # the target network will learn a Q function
 target = imitator
@@ -56,7 +56,7 @@ actor = DQN(5); actor.copy(target)
 
 while True:
     # reset the env
-    s = env.reset(); done = False
+    s = reinforcer.reset(); done = False
     # reset the metric monitor
     mm.reset_episode()
 
@@ -66,7 +66,7 @@ while True:
         a,w = actor.act(s)
 
         # environment returns new state, reward, done
-        s_prime, r, done, correct_word, a = env.step(a,w)
+        s_prime, r, done, correct_word, a = reinforcer.step(a,w)
 
         # save episode info
         mm.store(s,a,r,s_prime,done,correct_word)
@@ -75,7 +75,7 @@ while True:
 
         # visualize actions taken by the agent
         if (mm.num_episodes+1) % VISUALIZE_EVERY == 0:
-            env.visualize_eyetrace(r,reward_over_time=mm.episode['reward'])
+            reinforcer.visualize_eyetrace(r,reward_over_time=mm.episode['reward'])
 
     # store the info from the episode
     target.remember(mm.get_history())
