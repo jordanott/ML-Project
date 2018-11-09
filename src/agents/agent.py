@@ -8,8 +8,10 @@ from warpctc_pytorch import CTCLoss
 
 class Agent(object):
     """Agent super class"""
-    def __init__(self):
-        pass
+    def __init__(self, PER_WORD=True):
+
+        if PER_WORD: self.imitate = self.imitate_per_word
+        else: self. imitate = self.imitate_per_page
 
     def reset(self):
         self.model.reset_lstm()
@@ -27,7 +29,7 @@ class Agent(object):
         self.model.IMITATE = imitator.model.IMITATE
         self.model.load_state_dict(imitator.model.state_dict())
 
-    def imitate(self, states_actions, words):
+    def imitate_per_page(self, states_actions, words):
         CTC = CTCLoss()
         total_action_loss = 0
         action_loss_history = []; char_predictions = []
@@ -77,48 +79,47 @@ class Agent(object):
         return {'word_loss': ctc_loss_val, 'action_loss': min(10,np.mean(action_loss_history))}, greedy
 
 
-'''def imitate(self):
-    ## word level imitation
+    def imitate_per_word(self, states_actions_per_word, words):
+        ## word level imitation
+        total_loss = {'action_loss': [], 'word_loss':[]}
 
-    total_loss = {'action_loss': [], 'word_loss':[]}
+        for states_actions, word in zip(states_actions_per_word, words):
 
-    for word_focus in self.imitate_memory:
-        self.reset() # reset hidden states
+            loss_dict, prediction = self.imitate_per_page(states_actions, word)
+
+        return total_loss
+
+
+'''for saccade in word_focus:
+    action_loss, word_loss = 0,0
+    # get experience from saccade
+    s,a,r,s_prime,done,correct_word = saccade
+
+    # move data to GPU
+    s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
+
+    # network predicted action and word
+    action_pred,word_pred = self.model(s)
+
+    # action loss
+    action_loss = F.nll_loss(action_pred, a)
+
+    # record action loss
+    action_loss_history.append(action_loss.item())
+
+    if correct_word: # if its time to predict a word
+        word_pred = word_pred.to(self.device)
+        correct_word = torch.Tensor([correct_word]).long().to(self.device)
+
+        word_loss = F.nll_loss(word_pred, correct_word)
+        # record losses
+        total_loss['action_loss'].append(np.mean(action_loss_history))
+        total_loss['word_loss'].append(word_loss.item())
         action_loss_history = []
 
-        for saccade in word_focus:
-            action_loss, word_loss = 0,0
-            # get experience from saccade
-            s,a,r,s_prime,done,correct_word = saccade
+    # total loss: combination of action and word losses
+    loss = action_loss + word_loss
 
-            # move data to GPU
-            s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
-
-            # network predicted action and word
-            action_pred,word_pred = self.model(s)
-
-            # action loss
-            action_loss = F.nll_loss(action_pred, a)
-
-            # record action loss
-            action_loss_history.append(action_loss.item())
-
-            if correct_word: # if its time to predict a word
-                word_pred = word_pred.to(self.device)
-                correct_word = torch.Tensor([correct_word]).long().to(self.device)
-
-                word_loss = F.nll_loss(word_pred, correct_word)
-                # record losses
-                total_loss['action_loss'].append(np.mean(action_loss_history))
-                total_loss['word_loss'].append(word_loss.item())
-                action_loss_history = []
-
-            # total loss: combination of action and word losses
-            loss = action_loss + word_loss
-
-            self.opt.zero_grad()
-            loss.backward(retain_graph=True)
-            self.opt.step()
-
-    return total_loss
-    '''
+    self.opt.zero_grad()
+    loss.backward(retain_graph=True)
+    self.opt.step()'''

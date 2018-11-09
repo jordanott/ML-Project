@@ -19,12 +19,26 @@ class Teacher(Environment):
 
         self.a_buffer = []
 
-    def generate_examples(self, plot=False):
-        states_actions = []
+    def update_eye(self,x,y):
+        self.eye.x = x
+        self.eye.y = y
+
+    def update_pointer(self, x,y):
+        self.P.x = x
+        self.P.y = y
+
+    def generate_examples(self, PER_WORD=True, plot=False):
+        states_actions = [[]] if PER_WORD else []
+        words = [] if PER_WORD else self.whole_page_char_ids
 
         while not self.done:
+
+            x, y = self.eye.x, self.eye.y
+            px, py = self.P.x, self.P.y
+
+            print 'Word', py, px
             # build eye Rectangle
-            eye_rect = self.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
+            eye_rect = self.Rectangle(x, y, x + self.D, y + self.D)
             # calculate overlap between eye and words
             self.coords, overlap = self.eye_word_overlap(self.words, eye_rect)
 
@@ -32,41 +46,54 @@ class Teacher(Environment):
             if self.a_buffer:
                 a = self.a_buffer.pop()
             elif self.P.x == len(self.lines[self.P.y]):
-                self.a_buffer = [4] + [np.random.choice([0,1,2,3],p=[.2,.5,.2,.1]) for _ in range(3)]
+                self.a_buffer = 4 #[4] + [np.random.choice([0,1,2,3],p=[.2,.5,.2,.1]) for _ in range(3)]
             else:
                 ymin = max(self.lines[self.P.y][0].ymin, self.lines[self.P.y][-1].ymin)
                 ymax = min(self.lines[self.P.y][0].ymax, self.lines[self.P.y][-1].ymax)
 
                 # if we want to go up and going up would put us out of reach from ymin
-                if a == 0 and self.eye.y - self.M/2. + self.D < ymin:
+                if a == 0 and y - self.M/2. + self.D < ymin:
                     a = 2
-                elif a == 2 and self.eye.y + self.M/2. > ymax:
+                elif a == 2 and y + self.M/2. > ymax:
                     a = 0
 
             if a == 0: # move up
-                if self.eye.y - self.M > -1: self.eye.y -= self.M/2
+                if y - self.M > -1: y -= self.M/2
             elif a == 1: # move right
-                if self.eye.x + self.M + self.D < self.env.shape[1]:
-                    self.eye.x += self.M
+                if x + self.M + self.D < self.env.shape[1]:
+                    x += self.M
                 else:
                     self.a_buffer = [4]
             elif a == 2: # move down
-                if self.eye.y + self.M + self.D < self.env.shape[0]: self.eye.y += self.M/2
+                if y + self.M + self.D < self.env.shape[0]: y += self.M/2
             elif a == 3: # move left
-                if self.eye.x - self.M > -1: self.eye.x -= self.M
+                if x - self.M > -1: x -= self.M
             elif a == 4: # new line
-                self.P.y += 1; self.P.x = 0
+                py += 1; px = 0
                 if self.P.y == len(self.lines): # DONE, do something here
                     self.done = True
-                elif self.eye.y + self.D < self.env.shape[0]:
-                    self.eye.y = int(self.lines[self.P.y][self.P.x].ymin)-25
-                    self.eye.x = int(self.lines[self.P.y][self.P.x].xmin)-25
+                elif y + self.D < self.env.shape[0]:
+                    print y,x
+                    print self.P.y, self.P.x
+                    y = int(self.lines[py][px].ymin)-25
+                    x = int(self.lines[py][px].xmin)-25
 
-            states_actions.append([self.format_state(), a])
+            if PER_WORD:
+                states_actions[-1].append([self.format_state(), a])
+            else:
+                states_actions.append([self.format_state(), a])
 
-            if plot:
-                self.visualize_eyetrace()
+            # record when we finished looking over a word
+            if PER_WORD and (self.eye.x > self.lines[self.P.y][self.P.x].xmax or a == 4):
+                px += 1
+                word_char_ids = self.env_words[self.lines[self.P.y][self.P.x]]['char_ids']
+                words.append(list(word_char_ids))
+                states_actions.append([])
+
+            if plot: self.visualize_eyetrace()
 
             self.episode_count += 1
+            self.update_eye(x,y); self.update_pointer(px, py)
+        print len(states_actions), len(words)
         # return ( s', r, done, correct_word )
-        return states_actions, self.whole_page_char_ids
+        return states_actions, words
