@@ -8,10 +8,10 @@ from warpctc_pytorch import CTCLoss
 
 class Agent(object):
     """Agent super class"""
-    def __init__(self, PER_WORD=True):
+    def __init__(self, PER_LINE=True):
 
-        if PER_WORD: self.imitate = self.imitate_per_word
-        else: self. imitate = self.imitate_per_page
+        if PER_LINE: self.imitate = self.imitate_per_line
+        else: self. imitate = self.imitate_per_group
 
     def reset(self):
         self.model.reset_lstm()
@@ -29,7 +29,7 @@ class Agent(object):
         self.model.IMITATE = imitator.model.IMITATE
         self.model.load_state_dict(imitator.model.state_dict())
 
-    def imitate_per_page(self, states_actions, words):
+    def imitate_per_group(self, states_actions, words):
         CTC = CTCLoss()
         total_action_loss = 0
         action_loss_history = []; char_predictions = []
@@ -76,18 +76,22 @@ class Agent(object):
 
         greedy = char_predictions.squeeze().argmax(dim=1)
 
-        return {'word_loss': ctc_loss_val, 'action_loss': min(10,np.mean(action_loss_history))}, greedy
+        return {'ctc_loss': ctc_loss_val, 'action_loss': np.mean(action_loss_history)}, greedy
 
 
-    def imitate_per_word(self, states_actions_per_word, words):
+    def imitate_per_line(self, states_actions_per_line, words):
         ## word level imitation
-        total_loss = {'action_loss': [], 'word_loss':[]}
+        action_loss, ctc_line_loss = [], []
+        prediction = ''
 
-        for states_actions, word in zip(states_actions_per_word, words):
+        for states_actions, word in zip(states_actions_per_line, words):
 
-            loss_dict, prediction = self.imitate_per_page(states_actions, word)
+            loss_dict, line_pred = self.imitate_per_group(states_actions, word)
+            prediction += line_pred
+            action_loss.append(loss_dict['action_loss'])
+            ctc_line_loss.append(loss_dict['ctc_loss'])
 
-        return total_loss
+        return {'ctc_loss':np.mean(ctc_line_loss), 'action_loss':np.mean(ctc_line_loss)}, prediction
 
 
 '''for saccade in word_focus:

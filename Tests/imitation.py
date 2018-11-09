@@ -7,7 +7,7 @@ from src.agents.dqn import DQN
 from src.helper.monitor import MetricMonitor
 from src.environment import env_reinforcer, env_teacher
 
-PER_WORD = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 100000; NET_COPY_TIME = 100
+PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 100000; NET_COPY_TIME = 100
 
 # monitor information
 mm = MetricMonitor(teach=True)
@@ -16,7 +16,7 @@ teacher = env_teacher.Teacher()
 reinforcer = env_reinforcer.Reinforcer()
 
 # Initialize imitator agent
-imitator = DQN(5, PER_WORD=PER_WORD)
+imitator = DQN(5, PER_LINE=PER_LINE)
 
 for i in range(IMITATE_LIMIT):
     # reset the env
@@ -24,7 +24,7 @@ for i in range(IMITATE_LIMIT):
     # reset the metric monitor
     mm.reset_episode()
 
-    states_actions, words = teacher.generate_examples(PER_WORD=PER_WORD)
+    states_actions, words = teacher.generate_examples(PER_LINE=PER_LINE)
     # imitate the teacher
     action_ctc_loss, greedy_pred = imitator.imitate(states_actions, words)
 
