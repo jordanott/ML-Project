@@ -11,7 +11,7 @@ class MetricMonitor(object):
         }
         self.imitator_loss = {
             'action_loss': [],
-            'word_loss': []
+            'ctc_loss': []
         }
         self.num_episodes = 0
         self.num_words = num_words
@@ -64,9 +64,9 @@ class MetricMonitor(object):
         if self.TEACH:
             # store losses from imitation training
             self.imitator_loss['action_loss'].append(total_loss['action_loss'])
-            self.imitator_loss['word_loss'].append(total_loss['word_loss'])
+            self.imitator_loss['ctc_loss'].append(total_loss['ctc_loss'])
 
-            data = [self.imitator_loss['action_loss'], np.log(self.imitator_loss['word_loss'])]
+            data = [self.imitator_loss['action_loss'], np.log(self.imitator_loss['ctc_loss'])]
             losses = ['Action Loss', 'Word Loss']
             # plot losses from imitation training
             P.vs_time(data, labels=losses,xlabel='Time',ylabel='Loss',title='Loss vs Time')
@@ -75,7 +75,7 @@ class MetricMonitor(object):
             P.vs_time(self.metrics['num_words_seen'],xlabel='Time',ylabel='Words Seen',title='Words Seen vs Time')
 
             print('Episodes: {} Action loss: {} Word loss: {}'.format(
-                self.num_episodes, np.mean(total_loss['action_loss']),np.mean(total_loss['word_loss'])))
+                self.num_episodes, np.mean(total_loss['action_loss']),np.mean(total_loss['ctc_loss'])))
         else:
             # mean reward from acting
             mean_reward = np.mean(self.episode['reward'])
