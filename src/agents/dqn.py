@@ -46,8 +46,8 @@ class Model(nn.Module):
         return a, c
 
 class DQN(Agent):
-    def __init__(self,num_actions,PER_WORD=True,num_chars=80,VISUALIZE=False):
-        super(DQN, self).__init__(PER_WORD=PER_WORD)
+    def __init__(self,num_actions,PER_LINE=True,num_chars=80,VISUALIZE=False):
+        super(DQN, self).__init__(PER_LINE=PER_LINE)
         # replay memory
         self.memory = []; self.imitate_memory = []
         # discount rate
@@ -71,7 +71,7 @@ class DQN(Agent):
         # load reader network
         self.model = Model(num_actions, num_chars)
         # model optimizer
-        self.opt = opt.RMSprop(self.model.parameters())
+        self.opt = opt.RMSprop(self.model.parameters(),lr=0.001)
         # GPU
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # move model to GPU

@@ -46,6 +46,7 @@ class Agent(object):
 
             # action loss
             action_loss = F.nll_loss(action_pred, a)
+
             # record action loss
             action_loss_history.append(action_loss.item()); total_action_loss += action_loss
 
@@ -71,7 +72,7 @@ class Agent(object):
         loss.backward()
 
         # Norm cutoff to prevent explosion of gradients
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10)
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 100)
         self.opt.step()
 
         greedy = char_predictions.squeeze().argmax(dim=1)
@@ -79,19 +80,19 @@ class Agent(object):
         return {'ctc_loss': ctc_loss_val, 'action_loss': np.mean(action_loss_history)}, greedy
 
 
-    def imitate_per_line(self, states_actions_per_line, words):
+    def imitate_per_line(self, states_actions_per_line, lines):
         ## word level imitation
         action_loss, ctc_line_loss = [], []
-        prediction = ''
+        prediction = []
 
-        for states_actions, word in zip(states_actions_per_line, words):
+        for states_actions, line_chars in zip(states_actions_per_line, lines):
 
-            loss_dict, line_pred = self.imitate_per_group(states_actions, word)
-            prediction += line_pred
+            loss_dict, line_pred = self.imitate_per_group(states_actions, line_chars)
+            prediction.extend(line_pred)
             action_loss.append(loss_dict['action_loss'])
             ctc_line_loss.append(loss_dict['ctc_loss'])
 
-        return {'ctc_loss':np.mean(ctc_line_loss), 'action_loss':np.mean(ctc_line_loss)}, prediction
+        return {'ctc_loss':np.mean(ctc_line_loss), 'action_loss':np.mean(action_loss)}, prediction
 
 
 '''for saccade in word_focus:
