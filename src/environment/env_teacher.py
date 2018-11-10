@@ -27,7 +27,7 @@ class Teacher(Environment):
             for line in self.lines:
                 words_in_line = []
                 for word in line:
-                    words_in_line.extend(self.env_words[word])
+                    words_in_line.extend(self.env_words[word]['char_ids'])
                 words.append(words_in_line)
 
         while not self.done:
@@ -67,9 +67,9 @@ class Teacher(Environment):
                 else:
                     self.a_buffer = [4]
             elif a == 2: # move down
-                if self.eye.y + self.M + self.D < self.env.shape[0]: y += self.M/2
+                if self.eye.y + self.M + self.D < self.env.shape[0]: self.eye.y += self.M/2
             elif a == 3: # move left
-                if self.eye.x - self.M > -1: x -= self.M
+                if self.eye.x - self.M > -1: self.eye.x -= self.M
             elif a == 4: # new line
                 self.P.y += 1; self.P.x = 0
                 if self.P.y == len(self.lines): # DONE, do something here
@@ -85,6 +85,5 @@ class Teacher(Environment):
 
             self.episode_count += 1
 
-        print len(states_actions), len(words)
         # return ( s', r, done, correct_word )
         return states_actions, words

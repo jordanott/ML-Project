@@ -29,6 +29,8 @@ class Environment(object):
         self.M = M; self.D = state_size
         self.data_dir = data_dir
         self.num_episodes = 0
+        # forms to chose from 
+        self.available_forms = []
         # reward for agent having eye over words
         self.word_hover_bonus = .1
 
@@ -122,8 +124,9 @@ class Environment(object):
         return 0
 
     def load_form_and_xml(self,data_dir):
-        print 'ONLY USING ONE FORM!!!!'
-        form_file = 'a01-000u.png' #random.choice(os.listdir(data_dir + 'forms/'))
+        if self.available_forms == []:
+            self.available_forms = np.random.choice(os.listdir(data_dir + 'forms/'),100).tolist()
+        form_file = random.choice(self.available_forms) #'a01-000u.png'
         xml_file = form_file.replace('.png','.xml')
 
         form = imread(data_dir+'forms/'+form_file,mode='RGB')
@@ -187,14 +190,16 @@ class Environment(object):
 
     def decode(self,list_char_ids, char_ids, blank_char=0):
         processed_char_ids = []
+        raw_char_ids = []
 
         for i in range(len(list_char_ids)):
             if i != 0 and list_char_ids[i] != list_char_ids[i-1] and list_char_ids[i] != blank_char:
                 processed_char_ids.append(list_char_ids[i])
             elif i == 0 and  list_char_ids[i] != blank_char:
                 processed_char_ids.append(list_char_ids[i])
-
-        return self.word_to_char_ids_swap(processed_char_ids, char_ids)
+            raw_char_ids.append(list_char_ids[i])
+        
+        return self.word_to_char_ids_swap(raw_char_ids, char_ids), self.word_to_char_ids_swap(processed_char_ids, char_ids)
 
     def gen_new_env(self,ds=2.0):
         # loading new environment (pages)
