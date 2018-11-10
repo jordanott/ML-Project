@@ -25,11 +25,15 @@ for i in range(IMITATE_LIMIT):
     mm.reset_episode()
 
     states_actions, words = teacher.generate_examples(PER_LINE=PER_LINE)
+
     # imitate the teacher
     action_ctc_loss, greedy_pred = imitator.imitate(states_actions, words)
+    
+    # flatten word list
+    if PER_LINE: words = [w for line in words for w in line]
 
     true_decode = teacher.word_to_char_ids_swap(words, teacher.char_ids)
-    pred_decode = teacher.decode(greedy_pred, teacher.char_ids)
+    raw, pred_decode = teacher.decode(greedy_pred, teacher.char_ids)
 
     mm.end_episode() # record metrics, increment mm.num_episodes
 
