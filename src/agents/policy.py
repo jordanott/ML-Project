@@ -46,7 +46,7 @@ class Model(nn.Module):
         return a, c
 
 class Policy(Agent):
-    def __init__(self,num_actions=2,num_chars=80,VISUALIZE=False):
+    def __init__(self,num_actions=4,num_chars=80,VISUALIZE=False):
         super(Policy, self).__init__()
         # replay memory
         self.memory = []; self.imitate_memory = []
@@ -54,8 +54,6 @@ class Policy(Agent):
         self.gamma = 0.9
         # visualize
         self.visualize = VISUALIZE
-        # number of environment actions
-        self.num_actions = num_actions
 
         self.num_chars = num_chars
         # load reader network
@@ -68,17 +66,17 @@ class Policy(Agent):
         self.model = self.model.to(self.device)
 
     def act(self,state):
-        # sample random action with probability epsilon
-        if uniform(0, 1) < self.epsilon:
-            return randint(0,self.num_actions-1), randint(0, self.num_chars-1)
-
         state = state.to(self.device)
-        q_values,w = self.model(state)
+        mu_std,w = self.model(state)
+
+        x_mu, x_std = mu_std[0], mu_std[1]
+        y_mu, y_std = mu_std[2], mu_std[3]
 
         w = torch.argmax(w,dim=1)
-        a = torch.argmax(q_values,dim=1).cpu().data.numpy()[0]
+        x = F.tanh(x_mu + x_std)
+        y = F.tanh(y_mu + y_std)
 
-        return a,w
+        return (x,y),w
 
     def remember(self,episode):
         if len(self.memory) == self.memory_size:
