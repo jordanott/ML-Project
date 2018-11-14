@@ -6,12 +6,10 @@ import sklearn.preprocessing
 from actor_critic import ActorCritic
 from sklearn.kernel_approximation import RBFSampler
 
-gamma = .9
+gamma = .95
 
 env = gym.envs.make('MountainCarContinuous-v0')
 observation_space = env.observation_space.sample()
-
-
 
 
 observation_examples = np.array([env.observation_space.sample() for x in range(10000)])
@@ -44,7 +42,7 @@ while True:
     reward = []
     while not done:
         s = featurize_state(s)
-        env.render()
+        #env.render()
         action = ac.act(s)
 
         s_prime, r, done, _ = env.step([action])
@@ -53,14 +51,11 @@ while True:
 
         value_next = ac.value_estimate(featurize_state(s_prime)).detach()
         td_target = r + gamma * value_next
-        current_value = ac.value_estimate(s).detach()
-        td_error = td_target - current_value
+        td_error = td_target - ac.value_estimate(s).detach()
 
         ac.update(s, td_target, td_error, action)
 
         s = s_prime
 
-        if len(reward) % 100 == 0:
-            print 'Avg reward:', np.mean(reward)
-            reward = []
-            ac.plot()
+    print ('Avg reward:', np.mean(reward), np.max(reward))
+    ac.plot()

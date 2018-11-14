@@ -1,3 +1,4 @@
+import numpy as np
 import torch.optim as opt
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
@@ -11,11 +12,13 @@ class ActorCritic:
         self.actor = Actor(observation_space)
         self.critic = Critic(observation_space)
 
-        self.actor_opt = opt.Adam(self.actor.parameters())
-        self.critic_opt = opt.Adam(self.critic.parameters())
+        self.actor_opt = opt.Adam(self.actor.parameters(), lr=.001)
+        self.critic_opt = opt.Adam(self.critic.parameters(), lr=0.1)
 
         self._actor_loss = []
         self._critic_loss = []
+
+        self.loss = {'actor':[], 'critic':[]}
 
     def act(self, state):
 
@@ -50,8 +53,24 @@ class ActorCritic:
         self._critic_loss.append(loss.item())
 
     def plot(self):
-        plt.plot(self._actor_loss,label='Actor')
-        plt.plot(self._critic_loss, label='Critic')
+        plt.clf()
+
+        self.loss['actor'].append(np.mean(self._actor_loss))
+        self.loss['critic'].append(np.mean(self._critic_loss))
+
+        self._actor_loss = []; self._critic_loss = []
+
+        plt.plot(self.loss['actor'],label='Actor')
+        plt.plot(self.loss['critic'], label='Critic')
 
         plt.legend()
         plt.savefig('loss.png')
+
+
+        plt.clf()
+
+        plt.plot(self.actor.history['mu'],label='Mu')
+        plt.plot(self.actor.history['sigma'], label='Sigma')
+
+        plt.legend()
+        plt.savefig('Dist.png')
