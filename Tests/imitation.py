@@ -42,7 +42,7 @@ for i in range(IMITATE_LIMIT):
 
     if (i + 1) % NET_COPY_TIME == 0:
         print 'Saving imitator model'
-        #imitator.save()
+        imitator.save()
         print 'Predicted:\n', ''.join(pred_decode)
         print
         print 'True:\n', ''.join(true_decode)

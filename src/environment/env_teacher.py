@@ -14,7 +14,7 @@ from recordclass import recordclass
 from src.helper import plotting as P
 
 class Teacher(Environment):
-    def __init__(self,state_size=64,data_dir='../data/',M=10):
+    def __init__(self,state_size=64,data_dir='../data/',M=15):
         super(Teacher, self).__init__(state_size,data_dir,M)
 
         self.a_buffer = []
@@ -37,7 +37,7 @@ class Teacher(Environment):
             self.coords, overlap = self.eye_word_overlap(self.words, eye_rect)
 
             # chose action to take
-            a = 1 if np.random.uniform() < .5 else np.random.choice([0,2,3],p=[.4,.4,.2])
+            a = 1 if np.random.uniform() < .9 else np.random.choice([0,2,3],p=[.4,.4,.2])
             if self.a_buffer:
                 a = self.a_buffer.pop()
             elif self.P.x == len(self.lines[self.P.y]):

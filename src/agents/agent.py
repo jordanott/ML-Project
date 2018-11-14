@@ -12,15 +12,19 @@ class Agent(object):
 
         if PER_LINE: self.imitate = self.imitate_per_line
         else: self. imitate = self.imitate_per_group
+        self.CTC = CTCLoss()
 
     def reset(self):
-        self.model.reset_lstm()
+        self.char_net.reset_lstm(); self.act_net.reset_lstm()
 
     def save(self):
-        weight_file = 'imitator_dqn' if self.model.IMITATE else 'actor_dqn'
-
+        weight_file = 'imitator_char_net' if self.char_net.IMITATE else 'actor_char_net'
         with open(weight_file, 'wb') as f:
-            torch.save(self.model, f)
+            torch.save(self.char_net, f)
+
+        weight_file = 'imitator_act_net' if self.act_net.IMITATE else 'actor_act_net'
+        with open(weight_file, 'wb') as f:
+            torch.save(self.act_net, f)
 
     def copy(self,imitator):
         # copy data from imitator dqn to actor
@@ -30,16 +34,15 @@ class Agent(object):
         self.model.load_state_dict(imitator.model.state_dict())
 
     def imitate_per_group(self, states_actions, words):
-        CTC = CTCLoss()
         total_action_loss = 0
         action_loss_history = []; char_predictions = []
         self.reset()
 
         for s, a in states_actions:
             # move data to GPU
-            s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
+            s, a = s.cuda(), torch.Tensor([a]).long().cuda()
             # network predicted action and char
-            action_pred,char_pred = self.model(s)
+            action_pred,char_pred = self.act_net(s), self.char_net(s)
 
             # save character predicted for ctc loss
             char_predictions.append(char_pred)
@@ -58,22 +61,26 @@ class Agent(object):
         pred_len = torch.IntTensor([char_predictions.shape[0]])
         word_len = torch.IntTensor([words.shape[0]])
 
-        ctc_loss = CTC(char_predictions, words, pred_len, word_len).to(self.device)
+        ctc_loss = self.CTC(char_predictions, words, pred_len, word_len).cuda()
         ctc_loss_val = ctc_loss.item()
 
         if ctc_loss_val == float('inf') or ctc_loss_val == -float('inf'):
             print("WARNING: received an inf loss, setting loss value to 0")
             ctc_loss_val = 0;
 
-        # calculate total loss
-        loss = ctc_loss + total_action_loss
-
-        self.opt.zero_grad()
-        loss.backward()
-
+        # char net loss
+        self.char_net_opt.zero_grad()
+        ctc_loss.backward()
         # Norm cutoff to prevent explosion of gradients
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 100)
-        self.opt.step()
+        torch.nn.utils.clip_grad_norm_(self.char_net.parameters(), 100)
+        self.char_net_opt.step()
+
+        # act net loss
+        self.act_net_opt.zero_grad()
+        total_action_loss.backward()
+        # Norm cutoff to prevent explosion of gradients                                                                                                                                                            
+        torch.nn.utils.clip_grad_norm_(self.act_net.parameters(), 100)
+        self.act_net_opt.step()
 
         greedy = char_predictions.squeeze().argmax(dim=1)
 

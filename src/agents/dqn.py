@@ -12,13 +12,9 @@ from src.networks.lstm import LSTM
 from src.networks.embedding import CNN
 from random import randint,uniform,sample
 
-class Model(nn.Module):
-    def __init__(self, num_actions, num_chars):
-        super(Model, self).__init__()
-        # modules for action prediction
-        self.a_cnn = CNN()
-        self.a_lstm = LSTM(64*29*29, hidden_size=256)
-        self.a_ff = FF(input_size=256,num_outputs=num_actions)
+class CharNet(nn.Module):
+    def __init__(self, num_chars):
+        super(CharNet, self).__init__()
 
         # modules for character prediction
         self.c_cnn = CNN()
@@ -29,21 +25,35 @@ class Model(nn.Module):
 
     def reset_lstm(self):
         self.c_lstm.reset_hidden()
-        self.a_lstm.reset_hidden()
 
     def forward(self, x):
-        a = self.a_cnn(x).unsqueeze(0)
-        a = self.a_lstm(a)
-        a = self.a_ff(a)
-
         c = self.c_cnn(x).unsqueeze(0)
         c = self.c_lstm(c)
         c = self.c_ff(c)
 
-        if self.IMITATE: a = F.log_softmax(a, dim=1)
-        else: c = F.log_softmax(c, dim=1)
+        if not self.IMITATE: c = F.log_softmax(c, dim=1)
 
-        return a, c
+        return c
+
+class ActNet(nn.Module):
+    def __init__(self, num_actions):
+        super(ActNet, self).__init__()
+
+        self.a_cnn = CNN()
+        self.a_lstm = LSTM(64*29*29, hidden_size=256)
+        self.a_ff = FF(input_size=256,num_outputs=num_actions)
+
+        self.IMITATE = True
+    def forward(self, x):
+        a = self.a_cnn(x).unsqueeze(0)
+        a = self.a_lstm(a)
+        a = self.a_ff(a)
+        if self.IMITATE: a = F.log_softmax(a, dim=1)
+        return a
+
+    def reset_lstm(self):
+        self.a_lstm.reset_hidden()
+
 
 class DQN(Agent):
     def __init__(self,num_actions,PER_LINE=True,num_chars=80,VISUALIZE=False):
@@ -69,13 +79,17 @@ class DQN(Agent):
 
         self.num_chars = num_chars
         # load reader network
-        self.model = Model(num_actions, num_chars)
+        self.char_net = CharNet(num_chars)
+        self.act_net = ActNet(num_actions)
         # model optimizer
-        self.opt = opt.RMSprop(self.model.parameters(),lr=0.001)
+        self.char_net_opt = opt.Adam(self.char_net.parameters(), lr=0.0002)
+        self.act_net_opt = opt.Adam(self.act_net.parameters(), lr=0.0002)
         # GPU
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # move model to GPU
-        self.model = self.model.to(self.device)
+        self.char_net.cuda()
+        self.act_net.cuda()
 
     def act(self,state):
         # sample random action with probability epsilon
@@ -83,9 +97,10 @@ class DQN(Agent):
             return randint(0,self.num_actions-1), randint(0, self.num_chars-1)
 
         state = state.to(self.device)
-        q_values,w = self.model(state)
+        q_values = self.act_net(state)
+        char = self.char_net(state)
 
-        w = torch.argmax(w,dim=1)
+        w = torch.argmax(char,dim=1)
         a = torch.argmax(q_values,dim=1).cpu().data.numpy()[0]
 
         return a,w
@@ -116,7 +131,7 @@ class DQN(Agent):
                 s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
 
                 # Q(s, a; theta_target)
-                q_s,w = self.model(s)
+                q_s,w = self.act_net(s), self.char_net(s)
                 q_s_a = q_s[0,a]
 
                 # save q values
