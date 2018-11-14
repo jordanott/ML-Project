@@ -40,7 +40,7 @@ class ActNet(nn.Module):
         super(ActNet, self).__init__()
 
         self.a_cnn = CNN()
-        self.a_lstm = LSTM(64*29*29, hidden_size=256)
+        self.a_lstm = LSTM(64*512, hidden_size=256)
         self.a_ff = FF(input_size=256,num_outputs=num_actions)
 
         self.IMITATE = True

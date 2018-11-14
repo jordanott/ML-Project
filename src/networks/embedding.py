@@ -32,5 +32,5 @@ class CNN(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, x):
-        x = self.cnn(x)
+        x = self.cnn(x).view(1,-1)
         return x
