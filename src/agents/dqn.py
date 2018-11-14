@@ -18,7 +18,7 @@ class CharNet(nn.Module):
 
         # modules for character prediction
         self.c_cnn = CNN()
-        self.c_lstm = LSTM(64*29*29, hidden_size=256)
+        self.c_lstm = LSTM(64*512, hidden_size=256)
         self.c_ff = FF(input_size=256,num_outputs=num_chars)
 
         self.IMITATE = True
