@@ -11,6 +11,7 @@ from copy import deepcopy
 from recordclass import recordclass
 from environment import Environment
 from src.helper import plotting as P
+from Levenshtein import distance
 
 class Reinforcer(Environment):
     def __init__(self,state_size=64,data_dir='../data/',M=10):
@@ -18,23 +19,32 @@ class Reinforcer(Environment):
         self.predicted_chars = []
 
     def step(self, a, char):
-        # TODO: set correct word ; error here from it being None
-        r = 0; self.done = False; correct_word = None
+        r = 0; self.done = False
 
         # add the char just predicted
         self.predicted_chars.append(char)
+        print self.predicted_chars
         # decode the list of chars
-        decoded_word = self.decode(self.predicted_chars, self.char_ids)
+        raw, pred_decoded_page = self.decode(self.predicted_chars, self.char_ids)
 
-        # check if the decoded word is correct; assign rewards
-        if decoded_word == correct_word:
-            r = 1; self.patience = 75; del self.words[self.coords]
-        elif len(decoded_word) >= len(correct_word): r = -1
+        print 'char', char, pred_decoded_page
 
+        if True or len(pred_decoded_page) >= len(self.whole_page_char_ids):
+            done = True
+            raw, true_decode_page = self.decode(self.whole_page_char_ids, self.char_ids)
+
+            true_decode_page = ''.join(true_decode_page)
+            pred_decoded_page = ''.join(pred_decoded_page)
+
+            print pred_decoded_page, true_decode_page
+            l_dist = distance(pred_decoded_page, true_decode_page)
+            r = (len(self.whole_page_char_ids) - l_dist)/ float(len(self.whole_page_char_ids))
+
+            print 'Reward', r
         # build eye Rectangle
-        eye_rect = self.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
+        #eye_rect = self.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
         # calculate overlap between eye and words
-        self.coords, overlap = self.eye_word_overlap(self.words, eye_rect)
+        #self.coords, overlap = self.eye_word_overlap(self.words, eye_rect)
 
         if a == 0: # move up
             if self.eye.y - self.M > -1: self.eye.y -= self.M/2
@@ -58,4 +68,4 @@ class Reinforcer(Environment):
         if self.patience == 0: self.done = True
 
         # return ( s', r, done, correct_word )
-        return self.format_state(), r, self.done, correct_word, a
+        return self.format_state(), r, self.done

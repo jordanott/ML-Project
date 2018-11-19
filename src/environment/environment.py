@@ -29,7 +29,7 @@ class Environment(object):
         self.M = M; self.D = state_size
         self.data_dir = data_dir
         self.num_episodes = 0
-        # forms to chose from 
+        # forms to chose from
         self.available_forms = []
         # reward for agent having eye over words
         self.word_hover_bonus = .1
@@ -57,6 +57,7 @@ class Environment(object):
 
         self.episode_count = 0
         self.done = False
+        self.patience = 2000
 
         return self.format_state()
 
@@ -185,7 +186,7 @@ class Environment(object):
                 list_char_ids.append(char_ids[x])
             else:
                 list_char_ids.append(char_ids[char])
-                
+
         return list_char_ids
 
     def decode(self,list_char_ids, char_ids, blank_char=0):
@@ -198,7 +199,7 @@ class Environment(object):
             elif i == 0 and  list_char_ids[i] != blank_char:
                 processed_char_ids.append(list_char_ids[i])
             raw_char_ids.append(list_char_ids[i])
-        
+
         return self.word_to_char_ids_swap(raw_char_ids, char_ids), self.word_to_char_ids_swap(processed_char_ids, char_ids)
 
     def gen_new_env(self,ds=2.0):
