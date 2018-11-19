@@ -7,7 +7,7 @@ from src.agents.dqn import DQN
 from src.helper.monitor import MetricMonitor
 from src.environment import env_reinforcer, env_teacher
 
-PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 100000; NET_COPY_TIME = 100
+PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 50000; NET_COPY_TIME = 100
 
 # monitor information
 mm = MetricMonitor(teach=True)

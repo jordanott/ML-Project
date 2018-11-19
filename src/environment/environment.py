@@ -66,7 +66,7 @@ class Environment(object):
         state = self.env[row:row+self.D, col:col+self.D]
         state = state[:,:,0] / 255.
         state = state[np.newaxis,np.newaxis]
-
+        #state += np.random.uniform(-1e-2,1e-3,size=(1,1,self.D,self.D))
         return Tensor(state)
 
     def visualize_eyetrace(self, r=0, show=False, reward_over_time=None):
