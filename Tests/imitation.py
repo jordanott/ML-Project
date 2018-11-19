@@ -1,13 +1,17 @@
 import sys
 sys.path.append('../')
-
+import datetime
 import numpy as np
 
 from src.agents.dqn import DQN
 from src.helper.monitor import MetricMonitor
 from src.environment import env_reinforcer, env_teacher
 
-PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 50000; NET_COPY_TIME = 100
+IMITATE = False
+
+PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 50000; NET_COPY_TIME = 1000
+
+DIR = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
 
 # monitor information
 mm = MetricMonitor(teach=True)
@@ -16,36 +20,40 @@ teacher = env_teacher.Teacher()
 reinforcer = env_reinforcer.Reinforcer()
 
 # Initialize imitator agent
-imitator = DQN(5, PER_LINE=PER_LINE)
+imitator = DQN(5, PER_LINE=PER_LINE, DIR=DIR)
 
-for i in range(IMITATE_LIMIT):
-    # reset the env
-    s = teacher.reset()
-    # reset the metric monitor
-    mm.reset_episode()
+if IMITATE:
+    for i in range(IMITATE_LIMIT):
+        # reset the env
+        s = teacher.reset()
+        # reset the metric monitor
+        mm.reset_episode()
 
-    states_actions, words = teacher.generate_examples(PER_LINE=PER_LINE)
+        states_actions, words = teacher.generate_examples(PER_LINE=PER_LINE)
 
-    # imitate the teacher
-    action_ctc_loss, greedy_pred = imitator.imitate(states_actions, words)
-    
-    # flatten word list
-    if PER_LINE: words = [w for line in words for w in line]
+        # imitate the teacher
+        action_ctc_loss, greedy_pred = imitator.imitate(states_actions, words)
 
-    true_decode = teacher.word_to_char_ids_swap(words, teacher.char_ids)
-    raw, pred_decode = teacher.decode(greedy_pred, teacher.char_ids)
+        # flatten word list
+        if PER_LINE: words = [w for line in words for w in line]
 
-    mm.end_episode() # record metrics, increment mm.num_episodes
+        true_decode = teacher.word_to_char_ids_swap(words, teacher.char_ids)
+        raw, pred_decode = teacher.decode(greedy_pred, teacher.char_ids)
 
-    # logging: episode, losses OR reward info
-    mm.log_status(action_ctc_loss, 0)
+        mm.end_episode() # record metrics, increment mm.num_episodes
 
-    if (i + 1) % NET_COPY_TIME == 0:
-        print 'Saving imitator model'
-        imitator.save()
-        print 'Predicted:\n', ''.join(pred_decode)
-        print
-        print 'True:\n', ''.join(true_decode)
+        # logging: episode, losses OR reward info
+        mm.log_status(action_ctc_loss, 0)
+
+        if (i + 1) % NET_COPY_TIME == 0:
+            print 'Saving imitator model'
+            imitator.save()
+            print 'Predicted:\n', ''.join(pred_decode)
+            print
+            print 'True:\n', ''.join(true_decode)
+else:
+    imitator.load_weights(char_net_weights='imitator_char_net', act_net_weights='imitator_act_net')
+    print 'Weights loaded'
 
 # set monitor and env appropriately
 mm.TEACH = False; reinforcer.TEACH = False
@@ -53,10 +61,10 @@ mm.TEACH = False; reinforcer.TEACH = False
 # the target network will learn a Q function
 target = imitator
 # remove of add softmax for actions of model pred
-target.model.IMITATE = False
+target.act_net.IMITATE = False
 
 # the actor takes actions which the target network will learn from
-actor = DQN(5); actor.copy(target)
+actor = DQN(5, DIR=DIR); actor.copy(target)
 
 while True:
     # reset the env
@@ -70,10 +78,10 @@ while True:
         a,w = actor.act(s)
 
         # environment returns new state, reward, done
-        s_prime, r, done, correct_word, a = reinforcer.step(a,w)
+        s_prime, r, done = reinforcer.step(a,w)
 
         # save episode info
-        mm.store(s,a,r,s_prime,done,correct_word)
+        mm.store(s,a,r,s_prime,done)
 
         s = s_prime
 
@@ -82,16 +90,16 @@ while True:
             reinforcer.visualize_eyetrace(r,reward_over_time=mm.episode['reward'])
 
     # store the info from the episode
-    target.remember(mm.get_history())
+    actor.remember(mm.get_history())
     mm.end_episode() # record metrics, increment mm.num_episodes
 
     # if we're acting we want to replay episodes and learn rewards
-    reward_info = target.replay(actor.model)
+    reward_info = actor.replay(target)
 
     # logging: episode, losses OR reward info
-    mm.log_status(reward_info, target.epsilon)
+    mm.log_status(reward_info, actor.epsilon)
 
     if (mm.num_episodes+1) % NET_COPY_TIME == 0:
         # update the actor with latest version of target
-        actor.copy(target); actor.save()
+        target.copy(actor); actor.save()
         print('Actor network saved and updated...')
