@@ -46,13 +46,8 @@ class MetricMonitor(object):
         #if not self.TEACH: self.set_word_targets()
         return self.episode['history']
 
-    def store(self, s, a, r, s_prime, done, correct_word):
-        if self.TEACH:
-            self.episode['history'][-1].append([s,a,r,s_prime,done,correct_word])
-            if correct_word:
-                self.episode['history'].append([])
-        else:
-            self.episode['history'].append([s,a,r,s_prime,done,correct_word])
+    def store(self, s, a, r, s_prime, done):
+        self.episode['history'].append([s,a,r,s_prime,done])
 
         self.episode['action_distribution'][a] += 1
         self.episode['reward'].append(r)
