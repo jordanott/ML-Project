@@ -20,8 +20,7 @@ class CharNet(nn.Module):
         self.c_cnn = CNN()
         self.c_lstm = LSTM(64*512, hidden_size=256)
         self.c_ff = FF(input_size=256,num_outputs=num_chars)
-
-        self.IMITATE = True
+        #self.IMITATE = True
 
     def reset_lstm(self):
         self.c_lstm.reset_hidden()
@@ -31,8 +30,7 @@ class CharNet(nn.Module):
         c = self.c_lstm(c)
         c = self.c_ff(c)
 
-        if not self.IMITATE: c = F.log_softmax(c, dim=1)
-
+        #if not self.IMITATE: c = F.log_softmax(c, dim=1)
         return c
 
 class ActNet(nn.Module):
@@ -56,24 +54,24 @@ class ActNet(nn.Module):
 
 
 class DQN(Agent):
-    def __init__(self,num_actions,PER_LINE=True,num_chars=80,VISUALIZE=False):
-        super(DQN, self).__init__(PER_LINE=PER_LINE)
+    def __init__(self,num_actions,PER_LINE=True,DIR='',num_chars=80,VISUALIZE=False):
+        super(DQN, self).__init__(PER_LINE=PER_LINE, DIR=DIR)
         # replay memory
         self.memory = []; self.imitate_memory = []
         # discount rate
         self.gamma = 0.9
         # exploration rate
-        self.epsilon = 1
+        self.epsilon = 0.5
         # batch size
-        self.batch_size = 1
+        self.batch_size = 10
         # memory size
-        self.memory_size = 2000
+        self.memory_size = 200
         # visualize
         self.visualize = VISUALIZE
         # minimum exploration
         self.epsilon_min = 0.05
         # decay
-        self.epsilon_decay = 0.99
+        self.epsilon_decay = 0.999
         # number of environment actions
         self.num_actions = num_actions
 
@@ -84,8 +82,6 @@ class DQN(Agent):
         # model optimizer
         self.char_net_opt = opt.Adam(self.char_net.parameters(), lr=0.0002)
         self.act_net_opt = opt.Adam(self.act_net.parameters(), lr=0.0002)
-        # GPU
-        #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # move model to GPU
         self.char_net.cuda()
@@ -96,7 +92,7 @@ class DQN(Agent):
         if uniform(0, 1) < self.epsilon:
             return randint(0,self.num_actions-1), randint(0, self.num_chars-1)
 
-        state = state.to(self.device)
+        state = state.cuda()
         q_values = self.act_net(state)
         char = self.char_net(state)
 
@@ -118,20 +114,20 @@ class DQN(Agent):
 
         return self.memory
 
-    def replay(self, actor):
+    def replay(self, target):
         batch = self.get_batch()
         action_q_values = []
         for episode in batch:
-            self.reset(); actor.reset_lstm()
+            self.reset(); target.reset()
             for time_step in episode:
                 # get experience from batch
-                s,a,r,s_prime,done,correct_word = time_step
+                s,a,r,s_prime,done = time_step
 
                 # move data to GPU
-                s, a = s.to(self.device), torch.Tensor([a]).long().to(self.device)
+                s, a = s.cuda(), torch.Tensor([a]).long().cuda()
 
-                # Q(s, a; theta_target)
-                q_s,w = self.act_net(s), self.char_net(s)
+                # Q(s, a; theta_actor)
+                q_s = self.act_net(s)
                 q_s_a = q_s[0,a]
 
                 # save q values
@@ -139,9 +135,10 @@ class DQN(Agent):
 
                 # if the episode hasn't ended; estimate value of taking best action in s_prime
                 if not done:
-                    s_prime =  s_prime.to(self.device)
-                    # max(Q(s', a'; theta_actor))
-                    q_s_prime, w_prime = actor(s_prime)
+                    s_prime =  s_prime.cuda()
+                    # max(Q(s', a'; theta_target))
+                    q_s_prime = target.act_net(s_prime)
+
                     q_s_a_prime = torch.max(q_s_prime)
                     # add to reward with discount factor gamma
                     r += self.gamma * q_s_a_prime
@@ -150,7 +147,7 @@ class DQN(Agent):
                 clipped_error = -1.0 * error.clamp(-1,1)
 
                 q_s_a.backward(clipped_error, retain_graph=True)
-                self.opt.step()
+                self.act_net_opt.step()
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
