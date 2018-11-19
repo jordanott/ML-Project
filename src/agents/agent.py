@@ -1,37 +1,48 @@
+import os
 import torch
 import numpy as np
 import torch.nn as nn
 import torch.optim as opt
 import torch.nn.functional as F
 
+from copy import deepcopy
 from warpctc_pytorch import CTCLoss
 
 class Agent(object):
     """Agent super class"""
-    def __init__(self, PER_LINE=True):
+    def __init__(self, PER_LINE=True, DIR=''):
 
         if PER_LINE: self.imitate = self.imitate_per_line
-        else: self. imitate = self.imitate_per_group
+        else: self.imitate = self.imitate_per_group
         self.CTC = CTCLoss()
+        self.save_dir = DIR + '/'
+        if not os.path.exists(DIR):
+            os.mkdir(self.save_dir)
 
     def reset(self):
         self.char_net.reset_lstm(); self.act_net.reset_lstm()
 
-    def save(self):
+    def save(self, file_name=None):
         weight_file = 'imitator_char_net' if self.char_net.IMITATE else 'actor_char_net'
-        with open(weight_file, 'wb') as f:
+        with open(self.save_dir + weight_file, 'wb') as f:
             torch.save(self.char_net, f)
 
         weight_file = 'imitator_act_net' if self.act_net.IMITATE else 'actor_act_net'
-        with open(weight_file, 'wb') as f:
+        with open(self.save_dir + weight_file, 'wb') as f:
             torch.save(self.act_net, f)
+
+    def load_weights(self, char_net_weights, act_net_weights):
+        # load pretrained weights for char and act networks
+        self.char_net = the_model = torch.load(char_net_weights)
+        #self.act_net = the_model = torch.load(act_net_weights)
 
     def copy(self,imitator):
         # copy data from imitator dqn to actor
-        imitator.model.reset_lstm()
+        imitator.act_net.reset_lstm()
         self.epsilon = imitator.epsilon
-        self.model.IMITATE = imitator.model.IMITATE
-        self.model.load_state_dict(imitator.model.state_dict())
+        self.act_net.IMITATE = imitator.act_net.IMITATE
+        self.act_net = deepcopy(imitator.act_net)
+        #self.model.load_state_dict(imitator.model.state_dict())
 
     def imitate_per_group(self, states_actions, words):
         total_action_loss = 0
@@ -78,7 +89,7 @@ class Agent(object):
         # act net loss
         self.act_net_opt.zero_grad()
         total_action_loss.backward()
-        # Norm cutoff to prevent explosion of gradients                                                                                                                                                            
+        # Norm cutoff to prevent explosion of gradients
         torch.nn.utils.clip_grad_norm_(self.act_net.parameters(), 100)
         self.act_net_opt.step()
 
