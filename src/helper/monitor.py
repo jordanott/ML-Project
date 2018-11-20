@@ -2,7 +2,7 @@ import numpy as np
 from src.helper import plotting as P
 
 class MetricMonitor(object):
-    def __init__(self, num_words=13551, teach=False):
+    def __init__(self, num_words=13551, teach=False, save_dir=''):
         self.metrics = {
             'reward': [],
             'action_distribution': [],
@@ -18,6 +18,8 @@ class MetricMonitor(object):
 
         self.TEACH = teach
         self.reset_episode()
+
+        self.save_dir = save_dir
 
     def reset_episode(self):
         self.episode = {
@@ -75,12 +77,14 @@ class MetricMonitor(object):
             # mean reward from acting
             mean_reward = np.mean(self.episode['reward'])
             max_reward = np.max(self.episode['reward'])
-
+            
             # plot reward for acting
-            P.vs_time(self.metrics['reward'],xlabel='Time',ylabel='Reward',title='Reward vs Time')
+            P.vs_time(self.metrics['reward'],xlabel='Time',ylabel='Reward',
+                title='Reward vs Time', location=self.save_dir+'images/')
 
             # plot histogram of action q values for the episode
-            P.hist(total_loss, action_labels, xlabel='Q Values', title='Action Q Values',save=True, location='images/'+str(self.num_episodes))
+            P.hist(total_loss, action_labels, xlabel='Q Values', 
+                title='Action Q Values',save=True, location=self.save_dir+'images/'+str(self.num_episodes))
 
             print('Episodes: {}, Mean Reward: {}, Max: {}, Epsilon: {}'.format(
                 self.num_episodes, mean_reward, max_reward, epsilon))
@@ -88,7 +92,9 @@ class MetricMonitor(object):
         actions = np.array(self.metrics['action_distribution'])
         action_distribution = [actions[:,i] for i in range(6)]
         # plot distribution of actions taken for episode
-        P.vs_time(action_distribution, labels=action_labels,xlabel='Time',ylabel='Action Probabilities',title='Action Probabilities vs Time')
+        P.vs_time(action_distribution, labels=action_labels,xlabel='Time',
+            ylabel='Action Probabilities',title='Action Probabilities vs Time',
+            location=self.save_dir+'images/')
 
     def end_episode(self):
         # store episode (reward, episode length, and num words seen)

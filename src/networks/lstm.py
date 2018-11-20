@@ -15,9 +15,9 @@ class LSTM(nn.Module):
         self.reset_hidden()
 
 
-    def reset_hidden(self,device='cuda'):
-        self.hidden = (torch.zeros(self.num_layers, 1, self.hidden_size).to(device),
-            torch.zeros(self.num_layers, 1, self.hidden_size).to(device))
+    def reset_hidden(self):
+        self.hidden = (torch.zeros(self.num_layers, 1, self.hidden_size).cuda(),
+            torch.zeros(self.num_layers, 1, self.hidden_size).cuda())
 
     def forward(self, inputs):
         x, self.hidden = self.rnn(inputs, self.hidden)

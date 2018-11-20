@@ -43,6 +43,8 @@ class ActNet(nn.Module):
 
         self.IMITATE = True
     def forward(self, x):
+        #self.a_lstm.rnn.flatten_parameters()
+
         a = self.a_cnn(x).unsqueeze(0)
         a = self.a_lstm(a)
         a = self.a_ff(a)
@@ -54,8 +56,8 @@ class ActNet(nn.Module):
 
 
 class DQN(Agent):
-    def __init__(self,num_actions,PER_LINE=True,DIR='',num_chars=80,VISUALIZE=False):
-        super(DQN, self).__init__(PER_LINE=PER_LINE, DIR=DIR)
+    def __init__(self,num_actions,PER_LINE=True,save_dir='',num_chars=80,VISUALIZE=False):
+        super(DQN, self).__init__(PER_LINE=PER_LINE, save_dir=save_dir)
         # replay memory
         self.memory = []; self.imitate_memory = []
         # discount rate
@@ -145,8 +147,8 @@ class DQN(Agent):
 
                 error = r - q_s_a
                 clipped_error = -1.0 * error.clamp(-1,1)
-
-                q_s_a.backward(clipped_error, retain_graph=True)
+                #print clipped_error, done
+                q_s_a.backward(clipped_error, retain_graph=not done)
                 self.act_net_opt.step()
 
         if self.epsilon > self.epsilon_min:

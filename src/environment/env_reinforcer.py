@@ -14,33 +14,31 @@ from src.helper import plotting as P
 from Levenshtein import distance
 
 class Reinforcer(Environment):
-    def __init__(self,state_size=64,data_dir='../data/',M=10):
-        super(Reinforcer, self).__init__(state_size,data_dir,M)
+    def __init__(self,state_size=64,data_dir='../data/',M=10,save_dir=''):
+        super(Reinforcer, self).__init__(state_size,data_dir,M,save_dir=save_dir)
         self.predicted_chars = []
+    
+    def get_error_reward(self, pred_decoded_page):
+        raw, true_decode_page = self.decode(self.whole_page_char_ids, self.char_ids)
+
+        true_decode_page = ''.join(true_decode_page)
+        pred_decoded_page = ''.join(pred_decoded_page)
+
+        l_dist = distance(pred_decoded_page, true_decode_page)
+        r = (len(self.whole_page_char_ids) - l_dist)/ float(len(self.whole_page_char_ids))
+        return r
 
     def step(self, a, char):
         r = 0; self.done = False
 
         # add the char just predicted
         self.predicted_chars.append(char)
-        print self.predicted_chars
+        
         # decode the list of chars
         raw, pred_decoded_page = self.decode(self.predicted_chars, self.char_ids)
 
-        print 'char', char, pred_decoded_page
+        if len(pred_decoded_page) >= len(self.whole_page_char_ids): self.done = True
 
-        if True or len(pred_decoded_page) >= len(self.whole_page_char_ids):
-            done = True
-            raw, true_decode_page = self.decode(self.whole_page_char_ids, self.char_ids)
-
-            true_decode_page = ''.join(true_decode_page)
-            pred_decoded_page = ''.join(pred_decoded_page)
-
-            print pred_decoded_page, true_decode_page
-            l_dist = distance(pred_decoded_page, true_decode_page)
-            r = (len(self.whole_page_char_ids) - l_dist)/ float(len(self.whole_page_char_ids))
-
-            print 'Reward', r
         # build eye Rectangle
         #eye_rect = self.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
         # calculate overlap between eye and words
@@ -66,6 +64,9 @@ class Reinforcer(Environment):
 
         # if patience has run out the episode ends
         if self.patience == 0: self.done = True
+        
+        if self.done:
+            r = self.get_error_reward(pred_decoded_page)
 
         # return ( s', r, done, correct_word )
         return self.format_state(), r, self.done

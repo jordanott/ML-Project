@@ -21,7 +21,7 @@ from DataExploration.word_analysis import load_word_ids,load_char_ids
 
 
 class Environment(object):
-    def __init__(self,state_size=64,data_dir='../data/',M=10):
+    def __init__(self,state_size=64,data_dir='../data/',M=10,save_dir=''):
         """
         state_size (int): size of image chunk returned to the agent
         data_dir (str): location of forms and xml files
@@ -36,7 +36,7 @@ class Environment(object):
 
         self.Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
-
+        self.save_dir = save_dir
     def new_env(self):
         self.env,self.env_words,self.lines,self.char_ids,self.whole_page_char_ids = self.gen_new_env()
 
@@ -71,7 +71,7 @@ class Environment(object):
         return Tensor(state)
 
     def visualize_eyetrace(self, r=0, show=False, reward_over_time=None):
-        dir_location = 'images/%05d/' % self.num_episodes
+        dir_location = self.save_dir+'images/%05d/' % self.num_episodes
         if not os.path.exists(dir_location): # mkdir
             os.mkdir(dir_location); os.mkdir(dir_location + 'env'); os.mkdir(dir_location + 'state')
 
@@ -126,7 +126,8 @@ class Environment(object):
 
     def load_form_and_xml(self,data_dir):
         if self.available_forms == []:
-            self.available_forms = np.random.choice(os.listdir(data_dir + 'forms/'),100).tolist()
+            num_choices = 100 if self.TEACH else len(os.listdir(data_dir+'forms/'))
+            self.available_forms = np.random.choice(os.listdir(data_dir + 'forms/'),num_choices,replace=False).tolist()
         form_file = random.choice(self.available_forms) #'a01-000u.png'
         xml_file = form_file.replace('.png','.xml')
 

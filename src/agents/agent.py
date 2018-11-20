@@ -10,17 +10,16 @@ from warpctc_pytorch import CTCLoss
 
 class Agent(object):
     """Agent super class"""
-    def __init__(self, PER_LINE=True, DIR=''):
+    def __init__(self, PER_LINE=True, save_dir=''):
 
         if PER_LINE: self.imitate = self.imitate_per_line
         else: self.imitate = self.imitate_per_group
         self.CTC = CTCLoss()
-        self.save_dir = DIR + '/'
-        if not os.path.exists(DIR):
-            os.mkdir(self.save_dir)
-
+        self.save_dir = save_dir
+        
     def reset(self):
         self.char_net.reset_lstm(); self.act_net.reset_lstm()
+        self.act_net.a_lstm.rnn.flatten_parameters()
 
     def save(self, file_name=None):
         weight_file = 'imitator_char_net' if self.char_net.IMITATE else 'actor_char_net'
@@ -34,7 +33,7 @@ class Agent(object):
     def load_weights(self, char_net_weights, act_net_weights):
         # load pretrained weights for char and act networks
         self.char_net = the_model = torch.load(char_net_weights)
-        #self.act_net = the_model = torch.load(act_net_weights)
+        self.act_net = the_model = torch.load(act_net_weights)
 
     def copy(self,imitator):
         # copy data from imitator dqn to actor

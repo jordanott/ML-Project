@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append('../')
 import datetime
@@ -11,16 +12,21 @@ IMITATE = False
 
 PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 50000; NET_COPY_TIME = 1000
 
-DIR = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+CUR_DIR = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y") +'/'
+if not os.path.exists(CUR_DIR):
+    os.mkdir(CUR_DIR)
+
+if not os.path.exists(CUR_DIR+'images'):
+    os.mkdir(CUR_DIR+'images')
 
 # monitor information
-mm = MetricMonitor(teach=True)
+mm = MetricMonitor(teach=True,save_dir=CUR_DIR)
 # define env
-teacher = env_teacher.Teacher()
-reinforcer = env_reinforcer.Reinforcer()
+teacher = env_teacher.Teacher(save_dir=CUR_DIR)
+reinforcer = env_reinforcer.Reinforcer(save_dir=CUR_DIR)
 
 # Initialize imitator agent
-imitator = DQN(5, PER_LINE=PER_LINE, DIR=DIR)
+imitator = DQN(5, PER_LINE=PER_LINE,save_dir=CUR_DIR)
 
 if IMITATE:
     for i in range(IMITATE_LIMIT):
@@ -64,7 +70,7 @@ target = imitator
 target.act_net.IMITATE = False
 
 # the actor takes actions which the target network will learn from
-actor = DQN(5, DIR=DIR); actor.copy(target)
+actor = DQN(5, save_dir=CUR_DIR); actor.copy(target)
 
 while True:
     # reset the env
@@ -84,10 +90,6 @@ while True:
         mm.store(s,a,r,s_prime,done)
 
         s = s_prime
-
-        # visualize actions taken by the agent
-        if (mm.num_episodes+1) % VISUALIZE_EVERY == 0:
-            reinforcer.visualize_eyetrace(r,reward_over_time=mm.episode['reward'])
 
     # store the info from the episode
     actor.remember(mm.get_history())
