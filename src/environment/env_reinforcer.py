@@ -17,19 +17,31 @@ class Reinforcer(Environment):
     def __init__(self,state_size=64,data_dir='../data/',M=10,save_dir=''):
         super(Reinforcer, self).__init__(state_size,data_dir,M,save_dir=save_dir)
         self.predicted_chars = []
+        self.predictions_file = save_dir + 'predictions.txt'
     
     def get_error_reward(self, pred_decoded_page):
-        raw, true_decode_page = self.decode(self.whole_page_char_ids, self.char_ids)
+        raw, true_decoded_page = self.decode(self.whole_page_char_ids, self.char_ids)
 
-        true_decode_page = ''.join(true_decode_page)
+        true_decoded_page = ''.join(true_decoded_page)
         pred_decoded_page = ''.join(pred_decoded_page)
 
-        l_dist = distance(pred_decoded_page, true_decode_page)
+        l_dist = distance(pred_decoded_page, true_decoded_page)
         r = (len(self.whole_page_char_ids) - l_dist)/ float(len(self.whole_page_char_ids))
-        return r
 
-    def step(self, a, char):
+        with open(self.predictions_file, 'a') as f:     
+            f.write('Episode:' + str(self.num_episodes)); f.write('\n')
+            f.write('Predicted:\n'+''.join(pred_decoded_page)); f.write('\n')
+            f.write('True:\n'+''.join(true_decoded_page)); f.write('\n')
+
+        return max(-1, min(r, 1))
+
+    def step(self, a, char, plot=False):
         r = 0; self.done = False
+
+        # build eye Rectangle
+        eye_rect = self.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)
+        # calculate overlap between eye and words
+        self.coords, overlap = self.eye_word_overlap(self.words, eye_rect)
 
         # add the char just predicted
         self.predicted_chars.append(char)
@@ -67,6 +79,8 @@ class Reinforcer(Environment):
         
         if self.done:
             r = self.get_error_reward(pred_decoded_page)
+        if plot:
+            self.visualize_eyetrace(r)
 
         # return ( s', r, done, correct_word )
         return self.format_state(), r, self.done
