@@ -22,7 +22,7 @@ class Agent(object):
         self.act_net.a_lstm.rnn.flatten_parameters()
 
     def save(self, file_name=None):
-        weight_file = 'imitator_char_net' if self.char_net.IMITATE else 'actor_char_net'
+        weight_file = 'imitator_char_net'
         with open(self.save_dir + weight_file, 'wb') as f:
             torch.save(self.char_net, f)
 
@@ -30,10 +30,10 @@ class Agent(object):
         with open(self.save_dir + weight_file, 'wb') as f:
             torch.save(self.act_net, f)
 
-    def load_weights(self, char_net_weights, act_net_weights):
+    def load_weights(self, char_net_weights, act_net_weights=None):
         # load pretrained weights for char and act networks
         self.char_net = the_model = torch.load(char_net_weights)
-        self.act_net = the_model = torch.load(act_net_weights)
+        if act_net_weights: self.act_net = the_model = torch.load(act_net_weights)
 
     def copy(self,imitator):
         # copy data from imitator dqn to actor

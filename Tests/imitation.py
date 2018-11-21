@@ -10,9 +10,9 @@ from src.environment import env_reinforcer, env_teacher
 
 IMITATE = False
 
-PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 50000; NET_COPY_TIME = 1000
+PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 50000; NET_COPY_TIME = 5000
 
-CUR_DIR = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y") +'/'
+CUR_DIR = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y").replace(' ','-') +'/'
 if not os.path.exists(CUR_DIR):
     os.mkdir(CUR_DIR)
 
@@ -58,7 +58,7 @@ if IMITATE:
             print
             print 'True:\n', ''.join(true_decode)
 else:
-    imitator.load_weights(char_net_weights='imitator_char_net', act_net_weights='imitator_act_net')
+    imitator.load_weights(char_net_weights='imitator_char_net') # , act_net_weights='imitator_act_net')
     print 'Weights loaded'
 
 # set monitor and env appropriately
@@ -70,7 +70,7 @@ target = imitator
 target.act_net.IMITATE = False
 
 # the actor takes actions which the target network will learn from
-actor = DQN(5, save_dir=CUR_DIR); actor.copy(target)
+actor = DQN(5, save_dir=CUR_DIR); actor.copy(target); plot=False
 
 while True:
     # reset the env
@@ -84,13 +84,13 @@ while True:
         a,w = actor.act(s)
 
         # environment returns new state, reward, done
-        s_prime, r, done = reinforcer.step(a,w)
+        s_prime, r, done = reinforcer.step(a,w,plot=plot)
 
         # save episode info
         mm.store(s,a,r,s_prime,done)
 
         s = s_prime
-
+    plot = False
     # store the info from the episode
     actor.remember(mm.get_history())
     mm.end_episode() # record metrics, increment mm.num_episodes
@@ -105,3 +105,4 @@ while True:
         # update the actor with latest version of target
         target.copy(actor); actor.save()
         print('Actor network saved and updated...')
+        plot = True
