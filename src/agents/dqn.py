@@ -63,7 +63,7 @@ class DQN(Agent):
         # discount rate
         self.gamma = 0.9
         # exploration rate
-        self.epsilon = 0.5
+        self.epsilon = 0.7
         # batch size
         self.batch_size = 10
         # memory size
@@ -90,15 +90,15 @@ class DQN(Agent):
         self.act_net.cuda()
 
     def act(self,state):
+        state = state.cuda()
+        char = self.char_net(state)
+        w = torch.argmax(char,dim=1)
+
         # sample random action with probability epsilon
         if uniform(0, 1) < self.epsilon:
-            return randint(0,self.num_actions-1), randint(0, self.num_chars-1)
+            return randint(0,self.num_actions-1), w
 
-        state = state.cuda()
         q_values = self.act_net(state)
-        char = self.char_net(state)
-
-        w = torch.argmax(char,dim=1)
         a = torch.argmax(q_values,dim=1).cpu().data.numpy()[0]
 
         return a,w
