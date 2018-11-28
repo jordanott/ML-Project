@@ -14,10 +14,13 @@ from src.helper import plotting as P
 from Levenshtein import distance
 
 class Reinforcer(Environment):
-    def __init__(self,state_size=64,data_dir='../data/',M=10,save_dir=''):
-        super(Reinforcer, self).__init__(state_size,data_dir,M,save_dir=save_dir)
-        self.predicted_chars = []
-        self.predictions_file = save_dir + 'predictions.txt'
+    def __init__(self,state_size=64,data_dir='../data/',save_dir=''):
+        super(Reinforcer, self).__init__(False,state_size,data_dir,save_dir=save_dir)
+        self.actions_file = save_dir + 'Actions/actions_%05d.txt'
+        self.predictions_file = save_dir + 'Predictions/predictions_%05d.txt'
+        
+        # mkdir for Action and Prediction files
+        os.mkdir(save_dir+'Actions'); os.mkdir(save_dir+'Predictions')
     
     def get_error_reward(self, pred_decoded_page):
         raw, true_decoded_page = self.decode(self.whole_page_char_ids, self.char_ids)
@@ -27,8 +30,11 @@ class Reinforcer(Environment):
 
         l_dist = distance(pred_decoded_page, true_decoded_page)
         r = (len(self.whole_page_char_ids) - l_dist)/ float(len(self.whole_page_char_ids))
+        
+        with open(self.actions_file % self.num_episodes, 'a') as f:
+            f.write(','.join(map(str,self.actions_taken))) 
 
-        with open(self.predictions_file, 'a') as f:     
+        with open(self.predictions_file % self.num_episodes, 'a') as f:     
             f.write('Episode:' + str(self.num_episodes)); f.write('\n')
             f.write('Predicted:\n'+''.join(pred_decoded_page)); f.write('\n')
             f.write('True:\n'+''.join(true_decoded_page)); f.write('\n')
@@ -36,7 +42,7 @@ class Reinforcer(Environment):
         return max(-1, min(r, 1))
 
     def step(self, a, char, plot=False):
-        r = 0; self.done = False
+        r = 0; self.done = False; self.actions_taken.append(a)
 
         # build eye Rectangle
         eye_rect = self.Rectangle(self.eye.x, self.eye.y, self.eye.x + self.D, self.eye.y + self.D)

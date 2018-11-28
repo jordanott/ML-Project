@@ -106,7 +106,7 @@ class DQN(Agent):
     def remember(self,episode):
         if len(self.memory) == self.memory_size:
             del self.memory[0]
-
+        episode = self.mc(episode)
         self.memory.append(episode)
 
     def get_batch(self):
@@ -115,6 +115,14 @@ class DQN(Agent):
             return sample(self.memory,self.batch_size)
 
         return self.memory
+
+    def mc(self, episode):
+        discounted_reward = episode[-1][2]
+        for i in reversed(range(len(episode)-1)):
+            discounted_reward *= self.gamma
+            episode[i][2] = discounted_reward
+
+        return episode
 
     def replay(self, target):
         batch = self.get_batch()
