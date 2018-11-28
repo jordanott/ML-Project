@@ -21,19 +21,19 @@ from DataExploration.word_analysis import load_word_ids,load_char_ids
 
 
 class Environment(object):
-    def __init__(self,state_size=64,data_dir='../data/',M=10,save_dir=''):
+    def __init__(self,teach=True,state_size=32,data_dir='../data/',save_dir=''):
         """
         state_size (int): size of image chunk returned to the agent
         data_dir (str): location of forms and xml files
         """
-        self.M = M; self.D = state_size
+        self.M = state_size/4; self.D = state_size
         self.data_dir = data_dir
         self.num_episodes = 0
         # forms to chose from
         self.available_forms = []
         # reward for agent having eye over words
         self.word_hover_bonus = .1
-
+        self.TEACH = teach
         self.Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
 
         self.save_dir = save_dir
@@ -47,7 +47,7 @@ class Environment(object):
         self.new_env()
         self.words = deepcopy(self.env_words)
         # x,y corresponds to the upper left coordinate of the eye box
-        start_y = int(self.lines[0][0].ymin)-25; start_x = int(self.lines[0][0].xmin)-25
+        start_y = int(self.lines[0][0].ymin); start_x = int(self.lines[0][0].xmin)
 
         EyeLocation = recordclass('EyeLocation', 'x y')
         self.eye = EyeLocation(start_x, start_y )
@@ -58,7 +58,8 @@ class Environment(object):
         self.episode_count = 0
         self.done = False
         self.patience = 2000
-
+        # used in reinforcer
+        self.predicted_chars = []; self.actions_taken =	[]
         return self.format_state()
 
     def format_state(self):
@@ -133,7 +134,7 @@ class Environment(object):
 
         form = imread(data_dir+'forms/'+form_file,mode='RGB')
         xml = parse(data_dir+'xml/'+xml_file).getroot()
-
+        
         return form,xml,form_file
 
     def eye_word_overlap(self,words, eye):

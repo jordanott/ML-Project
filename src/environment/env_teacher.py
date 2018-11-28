@@ -14,8 +14,8 @@ from recordclass import recordclass
 from src.helper import plotting as P
 
 class Teacher(Environment):
-    def __init__(self,state_size=64,data_dir='../data/',M=15,save_dir=''):
-        super(Teacher, self).__init__(state_size,data_dir,M,save_dir=save_dir)
+    def __init__(self,state_size=64,data_dir='../data/',save_dir=''):
+        super(Teacher, self).__init__(True,state_size,data_dir,save_dir=save_dir)
 
         self.a_buffer = []
 
