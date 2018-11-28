@@ -21,13 +21,13 @@ class Agent(object):
         self.char_net.reset_lstm(); self.act_net.reset_lstm()
         self.act_net.a_lstm.rnn.flatten_parameters()
 
-    def save(self, file_name=None):
-        weight_file = 'imitator_char_net'
+    def save(self, prefix='',file_name=None):
+        weight_file = prefix+'imitator_char_net'
         with open(self.save_dir + weight_file, 'wb') as f:
             torch.save(self.char_net, f)
 
         weight_file = 'imitator_act_net' if self.act_net.IMITATE else 'actor_act_net'
-        with open(self.save_dir + weight_file, 'wb') as f:
+        with open(self.save_dir + prefix + weight_file, 'wb') as f:
             torch.save(self.act_net, f)
 
     def load_weights(self, char_net_weights, act_net_weights=None):
