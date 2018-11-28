@@ -66,10 +66,12 @@ class MetricMonitor(object):
             data = [self.imitator_loss['action_loss'], np.log(self.imitator_loss['ctc_loss'])]
             losses = ['Action Loss', 'Word Loss']
             # plot losses from imitation training
-            P.vs_time(data, labels=losses,xlabel='Time',ylabel='Loss',title='Loss vs Time')
+            P.vs_time(data, labels=losses,xlabel='Time',ylabel='Loss',title='Loss vs Time',
+                location=self.save_dir+'images/')
 
             # plot number of words seen in training
-            P.vs_time(self.metrics['num_words_seen'],xlabel='Time',ylabel='Words Seen',title='Words Seen vs Time')
+            P.vs_time(self.metrics['num_words_seen'],xlabel='Time',ylabel='Words Seen',
+                title='Words Seen vs Time',location=self.save_dir+'images/')
 
             print('Episodes: {} Action loss: {} Word loss: {}'.format(
                 self.num_episodes, np.mean(total_loss['action_loss']),np.mean(total_loss['ctc_loss'])))
