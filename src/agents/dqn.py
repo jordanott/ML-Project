@@ -124,40 +124,41 @@ class DQN(Agent):
 
         return episode
 
-    def replay(self, target):
+    def replay(self, target, window_len=5):
         batch = self.get_batch()
         action_q_values = []
         for episode in batch:
-            self.reset(); target.reset()
-            for time_step in episode:
-                # get experience from batch
-                s,a,r,s_prime,done = time_step
+            for w in range(0,len(episode)-window_len,2):
+                self.reset(); target.reset()
+                for time_step in episode[w:w+window_len]:
+                    # get experience from batch
+                    s,a,r,s_prime,done = time_step
 
-                # move data to GPU
-                s, a = s.cuda(), torch.Tensor([a]).long().cuda()
+                    # move data to GPU
+                    s, a = s.cuda(), torch.Tensor([a]).long().cuda()
 
-                # Q(s, a; theta_actor)
-                q_s = self.act_net(s)
-                q_s_a = q_s[0,a]
+                    # Q(s, a; theta_actor)
+                    q_s = self.act_net(s)
+                    q_s_a = q_s[0,a]
 
-                # save q values
-                action_q_values.append(q_s.cpu().data.numpy()[0])
+                    # save q values
+                    action_q_values.append(q_s.cpu().data.numpy()[0])
 
-                # if the episode hasn't ended; estimate value of taking best action in s_prime
-                if not done:
-                    s_prime =  s_prime.cuda()
-                    # max(Q(s', a'; theta_target))
-                    q_s_prime = target.act_net(s_prime)
+                    # if the episode hasn't ended; estimate value of taking best action in s_prime
+                    if not done:
+                        s_prime =  s_prime.cuda()
+                        # max(Q(s', a'; theta_target))
+                        q_s_prime = target.act_net(s_prime)
 
-                    q_s_a_prime = torch.max(q_s_prime)
-                    # add to reward with discount factor gamma
-                    r += self.gamma * q_s_a_prime
+                        q_s_a_prime = torch.max(q_s_prime)
+                        # add to reward with discount factor gamma
+                        r += self.gamma * q_s_a_prime
 
-                error = r - q_s_a
-                clipped_error = -1.0 * error.clamp(-1,1)
-                #print clipped_error, done
-                q_s_a.backward(clipped_error, retain_graph=not done)
-                self.act_net_opt.step()
+                    error = r - q_s_a
+                    clipped_error = -1.0 * error.clamp(-1,1)
+                    #print clipped_error, done
+                    q_s_a.backward(clipped_error, retain_graph=not done)
+                    self.act_net_opt.step()
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
