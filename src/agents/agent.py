@@ -37,10 +37,14 @@ class Agent(object):
 
     def copy(self,imitator):
         # copy data from imitator dqn to actor
-        imitator.act_net.reset_lstm()
+        imitator.act_net.reset_lstm(); imitator.char_net.reset_lstm()
+
         self.epsilon = imitator.epsilon
         self.act_net.IMITATE = imitator.act_net.IMITATE
+
         self.act_net = deepcopy(imitator.act_net)
+        self.char_net = deepcopy(imitator.char_net)
+
         #self.model.load_state_dict(imitator.model.state_dict())
 
     def imitate_per_group(self, states_actions, words):
