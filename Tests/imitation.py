@@ -1,5 +1,6 @@
 import os
 import sys
+import torch
 sys.path.append('../')
 import datetime
 import numpy as np
@@ -9,7 +10,7 @@ from src.helper.monitor import MetricMonitor
 from src.environment import env_reinforcer, env_teacher
 
 # imitate or act, size of observation, prefix for directory name
-IMITATE = True; GLIMPSE = 64; PREFIX='{}_'.format(GLIMPSE)
+IMITATE = False; GLIMPSE = 64; PREFIX='{}_'.format(GLIMPSE)
 
 # ctc per line, visualize every x steps, how many steps to imitate, how often targets are set
 PER_LINE = True; VISUALIZE_EVERY = 100; IMITATE_LIMIT = 50000; NET_COPY_TIME = 5000
@@ -60,7 +61,7 @@ if IMITATE:
             print
             print 'True:\n', ''.join(true_decode)
 else:
-    imitator.load_weights(char_net_weights='imitator_char_net') # , act_net_weights='imitator_act_net')
+    imitator.load_weights(char_net_weights='saved_imitation_weights/imitator_char_net') # , act_net_weights='imitator_act_net')
     print 'Weights loaded'
 
 # set monitor and env appropriately
@@ -79,15 +80,15 @@ while True:
     s = reinforcer.reset(); done = False
     # reset the metric monitor
     mm.reset_episode()
+    actor.set_grad(False)
 
     while not done: # loop while the episode runs
-
         # take actions
         a,w = actor.act(s)
-
+        
         # environment returns new state, reward, done
         s_prime, r, done = reinforcer.step(a,w,plot=plot)
-
+        
         # save episode info
         mm.store(s,a,r,s_prime,done)
 

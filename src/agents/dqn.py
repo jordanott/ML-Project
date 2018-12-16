@@ -9,6 +9,7 @@ from agent import Agent
 from copy import deepcopy
 from src.networks.ff import FF
 from src.networks.lstm import LSTM
+from torch.autograd import Variable
 from src.networks.embedding import CNN
 from random import randint,uniform,sample
 
@@ -61,7 +62,7 @@ class DQN(Agent):
         # replay memory
         self.memory = []; self.imitate_memory = []
         # discount rate
-        self.gamma = 0.9
+        self.gamma = 0.99
         # exploration rate
         self.epsilon = 0.7
         # batch size
@@ -90,7 +91,7 @@ class DQN(Agent):
         self.act_net.cuda()
 
     def act(self,state):
-        state = state.cuda()
+        state = Variable(state.cuda(),volatile=True)
         char = self.char_net(state)
         w = torch.argmax(char,dim=1)
 
@@ -102,6 +103,10 @@ class DQN(Agent):
         a = torch.argmax(q_values,dim=1).cpu().data.numpy()[0]
 
         return a,w
+
+    def set_grad(self, bool):
+        for c,a in zip(self.char_net.parameters(), self.act_net.parameters()):
+            c.requires_grad = bool; a.requires_grad = bool
 
     def remember(self,episode):
         if len(self.memory) == self.memory_size:
@@ -125,6 +130,7 @@ class DQN(Agent):
         return episode
 
     def replay(self, target, window_len=5):
+        self.set_grad(True)
         batch = self.get_batch()
         action_q_values = []
         for episode in batch:
