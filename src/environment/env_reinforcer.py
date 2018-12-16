@@ -22,8 +22,8 @@ class Reinforcer(Environment):
         # mkdir for Action and Prediction files
         os.mkdir(save_dir+'Actions'); os.mkdir(save_dir+'Predictions')
     
-    def get_error_reward(self, pred_decoded_page):
-        raw, true_decoded_page = self.decode(self.whole_page_char_ids, self.char_ids)
+    def get_error_reward(self, raw, pred_decoded_page):
+        _, true_decoded_page = self.decode(self.whole_page_char_ids, self.char_ids)
 
         true_decoded_page = ''.join(true_decoded_page)
         pred_decoded_page = ''.join(pred_decoded_page)
@@ -37,6 +37,7 @@ class Reinforcer(Environment):
         with open(self.predictions_file % self.num_episodes, 'a') as f:     
             f.write('Episode:' + str(self.num_episodes)); f.write('\n')
             f.write('Predicted:\n'+''.join(pred_decoded_page)); f.write('\n')
+            f.write('Raw:\n'+''.join(raw)); f.write('\n')   
             f.write('True:\n'+''.join(true_decoded_page)); f.write('\n')
 
         return max(-1, min(r, 1))
@@ -84,7 +85,7 @@ class Reinforcer(Environment):
         if self.patience == 0: self.done = True
         
         if self.done:
-            r = self.get_error_reward(pred_decoded_page)
+            r = self.get_error_reward(raw, pred_decoded_page)
         if plot:
             self.visualize_eyetrace(r)
 
